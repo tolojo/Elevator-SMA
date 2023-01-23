@@ -1,6 +1,5 @@
 package Elevators;
 
-import Elevators.BlockingQueue;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.TickerBehaviour;
@@ -12,13 +11,14 @@ import jade.lang.acl.ACLMessage;
 
 import java.util.Vector;
 
-public class Elevator extends Agent {
+public class simpleElevator extends Agent {
 
   BlockingQueue<Integer> tasks = new BlockingQueue<>(6);
   Vector<AID> elevators = new Vector<>();
   int maxLoad = 4;
   int transCost = 5;
   int pisoAtual = 0; //representa o estado do agente
+
 
   public void setup() {
    

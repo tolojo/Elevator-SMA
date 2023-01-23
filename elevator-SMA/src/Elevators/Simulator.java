@@ -13,7 +13,7 @@ import java.util.Random;
 import java.util.Vector;
 
 public class Simulator extends Agent {
-
+    AID myAid = getAID();
   Vector<AID> elevators = new Vector<>();
   int pisoMaximo = 6;
 
@@ -53,6 +53,7 @@ public class Simulator extends Agent {
               }
               elevators = elevatorAux;
             }
+
           } catch (FIPAException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -64,10 +65,15 @@ public class Simulator extends Agent {
     addBehaviour(new TickerBehaviour(this, 10000) {
         protected void onTick(){
             int elevatorsSize = elevators.size();
+            if(elevatorsSize==1){
+            System.out.println("Sou o unico na lista");
+            return;
+            }
             Random randg = new Random();
-            int rElevator = randg.nextInt((elevatorsSize-1) + 1);
+            int rElevator = randg.nextInt(elevatorsSize);
+            System.out.println(elevators.get(rElevator).getName());
 
-            while(rElevator == 0){
+            while(elevators.get(rElevator).getName().equals(getName())){
                 rElevator = randg.nextInt(elevatorsSize); //Vamos escolher um dos elevadores na DF que nao seja o agente Simulador
             }
 
