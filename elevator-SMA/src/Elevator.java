@@ -1,32 +1,66 @@
+import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
-import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
-public class Elevator extends Agent{
+import jade.domain.FIPAException;
+import java.util.Vector;
 
-    BlockingQueue<Integer> tasks = new BlockingQueue<>(6);
+public class Elevator extends Agent {
 
-    int maxLoad = 4;
-    int transCost = 5;
-    int pisoAtual= 0; //representa o estado do agente
+  BlockingQueue<Integer> tasks = new BlockingQueue<>(6);
+  Vector<AID> elevators = new Vector<>();
+  int maxLoad = 4;
+  int transCost = 5;
+  int pisoAtual = 0; //representa o estado do agente
 
+  public void setup() {
+   
 
-    public void setup() {
-        
-    
-        DFAgentDescription dfd = new DFAgentDescription();
-        dfd.setName(getAID());
-        ServiceDescription sd = new ServiceDescription();
-        sd.setType("elevator");
-        sd.setName(getLocalName() + "-elevator");
-        dfd.addServices(sd);
-        try {
-          DFService.register(this, dfd);
-        } catch (FIPAException fe) {
-          fe.printStackTrace();
+    DFAgentDescription dfd = new DFAgentDescription();
+    dfd.setName(getAID());
+    ServiceDescription sd = new ServiceDescription();
+    sd.setType("elevator");
+    sd.setName(getLocalName() + "-elevator");
+    dfd.addServices(sd);
+    try {
+      DFService.register(this, dfd);
+    } catch (FIPAException fe) {
+      fe.printStackTrace();
+    }
+
+    addBehaviour(
+      new TickerBehaviour(this, 3000) {
+        protected void onTick() {
+          try {
+            Vector<AID> elevatorAux = new Vector<>();
+            DFAgentDescription dfd = new DFAgentDescription();
+            ServiceDescription sd = new ServiceDescription();
+            sd.setType("elevator");
+            dfd.addServices(sd);
+            DFAgentDescription[] result = DFService.search(
+              this.getAgent(),
+              dfd
+            );
+            System.out.println(result.length + " results");
+            if (result.length > 0) {
+              for (int i = 0; i < result.length; ++i) {
+                elevatorAux.addElement(result[i].getName());
+              }
+              for (int i = 0; i < result.length; ++i) {
+                System.out.println(elevatorAux.get(i));
+              }
+              elevators = elevatorAux;
+            }
+          } catch (FIPAException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+          }
         }
       }
+    );
+    addBehaviour(null);
 
-
+  }
 }
