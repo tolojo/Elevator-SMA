@@ -1,3 +1,4 @@
+package Elevators;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.TickerBehaviour;
@@ -5,24 +6,23 @@ import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
+import jade.domain.introspection.AddedBehaviour;
+import jade.lang.acl.ACLMessage;
+
+import java.util.Random;
 import java.util.Vector;
 
-public class Elevator extends Agent {
+public class Simulator extends Agent {
 
-  BlockingQueue<Integer> tasks = new BlockingQueue<>(6);
   Vector<AID> elevators = new Vector<>();
-  int maxLoad = 4;
-  int transCost = 5;
-  int pisoAtual = 0; //representa o estado do agente
+  int pisoMaximo = 6;
 
   public void setup() {
-   
-
     DFAgentDescription dfd = new DFAgentDescription();
     dfd.setName(getAID());
     ServiceDescription sd = new ServiceDescription();
     sd.setType("elevator");
-    sd.setName(getLocalName() + "-elevator");
+    sd.setName(getLocalName() + "-simulator");
     dfd.addServices(sd);
     try {
       DFService.register(this, dfd);
@@ -60,7 +60,28 @@ public class Elevator extends Agent {
         }
       }
     );
-    addBehaviour(null);
+
+    addBehaviour(new TickerBehaviour(this, 10000) {
+        protected void onTick(){
+            int elevatorsSize = elevators.size();
+            Random randg = new Random();
+            int rElevator = randg.nextInt(elevatorsSize);
+
+            while(rElevator == 0){
+                rElevator = randg.nextInt(elevatorsSize); //Vamos escolher um dos elevadores na DF que nao seja o agente Simulador
+            }
+            AID elevAid = elevators.get(rElevator);
+            int pisoDestino = randg.nextInt(pisoMaximo);
+            ACLMessage msg = new ACLMessage();
+            msg.setPerformative(ACLMessage.REQUEST);
+            msg.addReceiver((AID) elevAid );
+            msg.setContent(""+pisoDestino);
+            send(msg);
+
+
+        }
+    });
+
 
   }
 }
