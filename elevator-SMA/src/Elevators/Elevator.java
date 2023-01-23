@@ -8,6 +8,8 @@ import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
+import jade.lang.acl.ACLMessage;
+
 import java.util.Vector;
 
 public class Elevator extends Agent {
@@ -46,13 +48,13 @@ public class Elevator extends Agent {
               this.getAgent(),
               dfd
             );
-            System.out.println(result.length + " results");
+            //System.out.println(result.length + " results");
             if (result.length > 0) {
               for (int i = 0; i < result.length; ++i) {
                 elevatorAux.addElement(result[i].getName());
               }
               for (int i = 0; i < result.length; ++i) {
-                System.out.println(elevatorAux.get(i));
+                //System.out.println(elevatorAux.get(i));
               }
               elevators = elevatorAux;
             }
@@ -63,7 +65,31 @@ public class Elevator extends Agent {
         }
       }
     );
-    addBehaviour(null);
+    addBehaviour(new TickerBehaviour(this, 1000) {
+      @Override
+      protected void onTick() {
+        ACLMessage msg = myAgent.receive();
+        int pisoDestino;
+        int pisoInicial;
+        if(msg != null){
+          String pisos = msg.getContent();
+          //split mensagem
+          String [] pisosSplit = pisos.split(",");
+          pisoInicial = Integer.parseInt(pisosSplit[0]);
+          pisoDestino = Integer.parseInt(pisosSplit[1]);
+
+          //verificação do piso do elevador com o piso do pedido
+          if(pisoInicial != pisoAtual){
+            System.out.println("Elevador " + myAgent.getLocalName() + " movendo para o piso " + pisoInicial + " a partir do piso " + pisoAtual + ".");
+            pisoAtual = pisoInicial;
+          }
+          System.out.println("Elevador " + myAgent.getLocalName() + " no piso nº" + pisoAtual + ", seguindo para o piso nª" + pisoDestino);
+          pisoAtual = pisoDestino;
+          System.out.println("Elevador " + myAgent.getLocalName() + " no piso final nº" + pisoDestino + " alcançado");
+
+        }
+      }
+    });
 
   }
 }

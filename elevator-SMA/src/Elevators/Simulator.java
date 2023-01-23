@@ -43,13 +43,13 @@ public class Simulator extends Agent {
               this.getAgent(),
               dfd
             );
-            System.out.println(result.length + " results");
+            //System.out.println(result.length + " results");
             if (result.length > 0) {
               for (int i = 0; i < result.length; ++i) {
                 elevatorAux.addElement(result[i].getName());
               }
               for (int i = 0; i < result.length; ++i) {
-                System.out.println(elevatorAux.get(i));
+                //System.out.println(elevatorAux.get(i));
               }
               elevators = elevatorAux;
             }
@@ -65,18 +65,27 @@ public class Simulator extends Agent {
         protected void onTick(){
             int elevatorsSize = elevators.size();
             Random randg = new Random();
-            int rElevator = randg.nextInt(elevatorsSize);
+            int rElevator = randg.nextInt((elevatorsSize-1) + 1);
 
             while(rElevator == 0){
                 rElevator = randg.nextInt(elevatorsSize); //Vamos escolher um dos elevadores na DF que nao seja o agente Simulador
             }
+
+            System.out.println("Nºreg " + elevatorsSize + ", RAND = " + rElevator);
+
             AID elevAid = elevators.get(rElevator);
+            System.out.println("AID ESCOLHIDO = " + elevAid.getLocalName());
             int pisoDestino = randg.nextInt(pisoMaximo);
-            ACLMessage msg = new ACLMessage();
+            int pisoInicial = randg.nextInt(pisoMaximo);
+            while(pisoDestino == pisoInicial){
+                pisoInicial = randg.nextInt(pisoMaximo);
+            }
+            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
             msg.setPerformative(ACLMessage.REQUEST);
             msg.addReceiver((AID) elevAid );
-            msg.setContent(""+pisoDestino);
-            send(msg);
+            msg.setContent(pisoInicial + "," + pisoDestino);
+            System.out.println(msg.getContent());
+            myAgent.send(msg);
 
 
         }
