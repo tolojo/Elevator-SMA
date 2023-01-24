@@ -77,8 +77,6 @@ public class Simulator extends Agent {
                 rElevator = randg.nextInt(elevatorsSize); //Vamos escolher um dos elevadores na DF que nao seja o agente Simulador
             }
 
-            System.out.println("Nºreg " + elevatorsSize + ", RAND = " + rElevator);
-
             AID elevAid = elevators.get(rElevator);
             System.out.println("AID ESCOLHIDO = " + elevAid.getLocalName());
             int pisoDestino = randg.nextInt(pisoMaximo);
