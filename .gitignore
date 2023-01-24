@@ -1,0 +1,6 @@
+*.idea/
+*.vscode/
+/JADE-all-4.5.0/*
+
+# Compiled class file
+*.class
