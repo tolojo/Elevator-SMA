@@ -1,6 +1,11 @@
 *.idea/
 *.vscode/
-/JADE-all-4.5.0/*
 
+/elevator-SMA/out/*
+/JADE-all-4.5.0/*
 # Compiled class file
 *.class
+
+elevator-SMA/elevator-SMA.iml
+elevator-SMA/APDescription.txt
+elevator-SMA/MTPs-Main-Container.txt
