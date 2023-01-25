@@ -1,11 +1,11 @@
 package Elevators;
 
+import jade.core.AID;
 import jade.core.Agent;
 import jade.core.ProfileImpl;
 import jade.core.Runtime;
 import jade.util.Logger;
-import jade.wrapper.AgentContainer;
-import jade.wrapper.StaleProxyException;
+import jade.wrapper.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -65,14 +65,20 @@ public class ElevatorGUI extends Agent {
                     int maxFloors = (int) spinner.getValue();
                     int numElevators = (int) spinner_1.getValue();
                     int maxCapacity = (int) spinner_2.getValue();
-                    if (maxFloors <= 1 || numElevators <= 0 || maxCapacity <= 0) {
-                        throw new RuntimeException("Invalid inputs!");
+                    if (maxFloors <= 1) {
+                        throw new RuntimeException("Precisa indicar pelo menos 2 pisos.");
+                    }
+                    if (numElevators <= 0) {
+                        throw new RuntimeException("Precisa indicar pelo menos 1 elevador.");
+                    }
+                    if (maxCapacity <= 0) {
+                        throw new RuntimeException("Os elevadores precisam de uma capacidade de pelo menos 1 pessoa.");
                     }
 
                     OnStartSimulation(maxFloors, numElevators, maxCapacity);
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(null, "Erro! Utilize números acima de 0.",
-                            "Erro nos campos introduzidos", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(null, ex.getMessage(),
+                            "Erro ao iniciar simulação", JOptionPane.ERROR_MESSAGE);
                     throw new RuntimeException(ex);
                 }
             });
@@ -112,12 +118,16 @@ public class ElevatorGUI extends Agent {
                     int currentFloor = (int) spinnerCurrentFloor.getValue();
                     int desiredFloor = (int) spinnerDesiredFloor.getValue();
                     if (currentFloor < 0 || desiredFloor < 0) {
-                        throw new RuntimeException("Invalid inputs!");
+                        throw new RuntimeException("Não existem pisos negativos nesta simulação.");
                     }
+                    if (currentFloor == desiredFloor) {
+                        throw new RuntimeException("Não pode chamar o elevador para o mesmo piso.");
+                    }
+
                     OnCallElevator(currentFloor, desiredFloor);
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(null, "Erro! Utilize números iguais ou acima de 0.",
-                            "Erro nos campos introduzidos", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(null, ex.getMessage(),
+                            "Erro ao chamar elevador", JOptionPane.ERROR_MESSAGE);
                     throw new RuntimeException();
                 }
             });
@@ -135,22 +145,28 @@ public class ElevatorGUI extends Agent {
             frame.getContentPane().add(scrollPane);
 
             logPane = new JTextPane();
-            logPane.setToolTipText("");
             logPane.setFont(new Font("Tahoma", Font.PLAIN, 12));
             scrollPane.setViewportView(logPane);
+
+            JButton btnLimparLogs = new JButton("Limpar Logs");
+            btnLimparLogs.addActionListener(e -> {
+                logPane.setText("");
+            });
+            btnLimparLogs.setFont(new Font("Tahoma", Font.PLAIN, 17));
+            btnLimparLogs.setBounds(196, 328, 176, 33);
+            frame.getContentPane().add(btnLimparLogs);
         }
 
         return frame;
     }
 
-    private void OnStartSimulation(int maxFloors, int numElevators, int maxCapacity) throws StaleProxyException {
+    private void OnStartSimulation(int maxFloors, int numElevators, int maxCapacity) throws ControllerException {
+        PlatformController container = getContainerController();
+        AgentController agent = container.createNewAgent("SimulatorAgent", "elevator-SMA.Elevators.ElevatorAgent",
+                new Object[]{maxFloors, numElevators, maxCapacity});
+        agent.start();
         Log("Simulação Iniciada: Edificio com " + maxFloors + " pisos e " + numElevators + " elevadores, cada um" +
                 " com lotação " + maxCapacity);
-        Runtime rt = Runtime.instance();
-        ProfileImpl p = new ProfileImpl(false);
-        AgentContainer container = rt.createMainContainer(p);
-//        AgentController agent = container.createNewAgent("Simulator", "jade.Simulator", null);
-//        agent.start();
     }
 
     private void OnStopSimulation() {
