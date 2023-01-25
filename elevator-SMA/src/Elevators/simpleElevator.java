@@ -3,6 +3,8 @@ package Elevators;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
+import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.ThreadedBehaviourFactory;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -18,13 +20,13 @@ import static java.lang.Math.abs;
 
 public class simpleElevator extends Agent {
 
-  BlockingQueue<Integer> tasks = new BlockingQueue<>(6);
+  BlockingQueue<ACLMessage> tasks = new BlockingQueue<>(6);
   Vector<AID> elevators = new Vector<>();
   int maxLoad = 4;
   int transCost = 5;
   int pisoAtual = 0; //representa o estado do agente
   HashMap<String, Integer> eleLoc = new HashMap<String, Integer>();
-
+  private ThreadedBehaviourFactory tbf = new ThreadedBehaviourFactory();
 
 
   public void setup() {
@@ -53,10 +55,26 @@ public class simpleElevator extends Agent {
         }
       }
     );
+
+    Behaviour receiveTask = new CyclicBehaviour() {
+      @Override
+      public void action() {
+        ACLMessage task = myAgent.receive();
+        if(task != null){
+        try {
+          tasks.enqueue(task);
+          task = null;
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }}
+      }
+    };
+  addBehaviour(tbf.wrap(receiveTask));
     addBehaviour(new TickerBehaviour(this, 1000) {
       @Override
       protected void onTick() {
-        ACLMessage msg = myAgent.receive();
+        try {
+          ACLMessage msg = tasks.dequeue();
 
         if (msg != null) {
           if (msg.getPerformative() == ACLMessage.REQUEST) {
@@ -129,6 +147,9 @@ public class simpleElevator extends Agent {
           }
         }
         msg = null;
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
       }
     });
 
