@@ -16,7 +16,7 @@ public class ElevatorGUI {
     private boolean hasSimulationStarted;
     private int maxFloors, numOfElevators, maxCapacity;
     private int[][] elevatorStatus;
-    
+
     public ElevatorGUI(PlatformController platformController, AID simulatorAID) {
         this.platformController = platformController;
         this.simulatorAID = simulatorAID;
@@ -56,8 +56,13 @@ public class ElevatorGUI {
             spinner_2.setBounds(10, 110, 61, 20);
             frame.getContentPane().add(spinner_2);
 
-            JButton btnNewButton = new JButton("Iniciar Simulação");
-            btnNewButton.addActionListener(e -> {
+            JCheckBox chckbxUseSmartElevators = new JCheckBox("Utilizar Elevadores Inteligentes");
+            chckbxUseSmartElevators.setFont(new Font("Tahoma", Font.PLAIN, 16));
+            chckbxUseSmartElevators.setBounds(10, 142, 280, 34);
+            frame.getContentPane().add(chckbxUseSmartElevators);
+
+            JButton btnStartSimulation = new JButton("Iniciar Simulação");
+            btnStartSimulation.addActionListener(e -> {
                 try {
                     maxFloors = (int) spinner.getValue();
                     numOfElevators = (int) spinner_1.getValue();
@@ -72,28 +77,28 @@ public class ElevatorGUI {
                         throw new RuntimeException("Os elevadores precisam de uma capacidade de pelo menos 1 pessoa.");
                     }
 
-                    OnStartSimulation(maxFloors, numOfElevators, maxCapacity);
+                    OnStartSimulation(maxFloors, numOfElevators, maxCapacity, chckbxUseSmartElevators.isSelected());
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(null, ex.getMessage(),
                             "Erro ao iniciar simulação", JOptionPane.ERROR_MESSAGE);
                     throw new RuntimeException(ex);
                 }
             });
-            btnNewButton.setFont(new Font("Tahoma", Font.PLAIN, 17));
-            btnNewButton.setBounds(10, 146, 176, 33);
-            frame.getContentPane().add(btnNewButton);
+            btnStartSimulation.setFont(new Font("Tahoma", Font.PLAIN, 17));
+            btnStartSimulation.setBounds(10, 183, 176, 33);
+            frame.getContentPane().add(btnStartSimulation);
 
-            JButton btnPararSimulao = new JButton("Parar Simulação");
-            btnPararSimulao.addActionListener(e -> {
+            JButton btnStopSimulation = new JButton("Parar Simulação");
+            btnStopSimulation.addActionListener(e -> {
                 try {
                     OnStopSimulation();
                 } catch (StaleProxyException ex) {
                     throw new RuntimeException(ex);
                 }
             });
-            btnPararSimulao.setFont(new Font("Tahoma", Font.PLAIN, 17));
-            btnPararSimulao.setBounds(196, 146, 176, 33);
-            frame.getContentPane().add(btnPararSimulao);
+            btnStopSimulation.setFont(new Font("Tahoma", Font.PLAIN, 17));
+            btnStopSimulation.setBounds(196, 183, 176, 33);
+            frame.getContentPane().add(btnStopSimulation);
 
             JSpinner spinnerCurrentFloor = new JSpinner();
             spinnerCurrentFloor.setBounds(10, 247, 61, 20);
@@ -113,8 +118,8 @@ public class ElevatorGUI {
             spinnerDesiredFloor.setBounds(10, 292, 61, 20);
             frame.getContentPane().add(spinnerDesiredFloor);
 
-            JButton btnCriarTarefa = new JButton("Chamar Elevador");
-            btnCriarTarefa.addActionListener(e -> {
+            JButton btnCallElevator = new JButton("Chamar Elevador");
+            btnCallElevator.addActionListener(e -> {
                 try {
                     int currentFloor = (int) spinnerCurrentFloor.getValue();
                     int desiredFloor = (int) spinnerDesiredFloor.getValue();
@@ -132,12 +137,12 @@ public class ElevatorGUI {
                     throw new RuntimeException();
                 }
             });
-            btnCriarTarefa.setFont(new Font("Tahoma", Font.PLAIN, 17));
-            btnCriarTarefa.setBounds(10, 328, 176, 33);
-            frame.getContentPane().add(btnCriarTarefa);
+            btnCallElevator.setFont(new Font("Tahoma", Font.PLAIN, 17));
+            btnCallElevator.setBounds(10, 328, 176, 33);
+            frame.getContentPane().add(btnCallElevator);
 
             JSeparator separator = new JSeparator();
-            separator.setBounds(10, 209, 420, 27);
+            separator.setBounds(10, 227, 420, 9);
             frame.getContentPane().add(separator);
 
             JScrollPane scrollPane = new JScrollPane();
@@ -150,34 +155,36 @@ public class ElevatorGUI {
             logPane.setFont(new Font("Tahoma", Font.PLAIN, 16));
             scrollPane.setViewportView(logPane);
 
-            JButton btnLimparLogs = new JButton("Limpar Logs");
-            btnLimparLogs.addActionListener(e -> {
+            JButton btnClearLogs = new JButton("Limpar Logs");
+            btnClearLogs.addActionListener(e -> {
                 logPane.setText("");
             });
-            btnLimparLogs.setFont(new Font("Tahoma", Font.PLAIN, 17));
-            btnLimparLogs.setBounds(196, 328, 176, 33);
-            frame.getContentPane().add(btnLimparLogs);
+            btnClearLogs.setFont(new Font("Tahoma", Font.PLAIN, 17));
+            btnClearLogs.setBounds(196, 328, 176, 33);
+            frame.getContentPane().add(btnClearLogs);
         }
 
         return frame;
     }
 
-    private void OnStartSimulation(int maxFloors, int numElevators, int maxCapacity) throws ControllerException {
+    private void OnStartSimulation(int maxFloors, int numElevators, int maxCapacity, boolean useSmartElevatores) throws ControllerException {
+        String elevatorName = useSmartElevatores ? "SmartElevatorAgent-" : "ElevatorAgent-";
+        String elevatorPath = useSmartElevatores ? "Elevators.SmartElevatorAgent" : "Elevators.ElevatorAgent";
         for (int i = 1; i <= numElevators; i++) {
-            AgentController elevatorAgent = platformController.createNewAgent("ElevatorAgent-" + i, "Elevators.ElevatorAgent",
+            AgentController elevatorAgent = platformController.createNewAgent(elevatorName + i, elevatorPath,
                     new Object[]{simulatorAID, i, maxCapacity});
             elevatorAgent.start();
             agentControllers.add(elevatorAgent);
         }
-        
+
         log("Simulação Iniciada: Edificio com " + maxFloors + " pisos e " + numElevators + " elevadores, cada um" +
                 " com lotação " + maxCapacity);
         hasSimulationStarted = true;
         elevatorStatus = new int[maxFloors][numOfElevators];
     }
-    
+
     private void OnStopSimulation() throws StaleProxyException {
-        for (AgentController agent: agentControllers) {
+        for (AgentController agent : agentControllers) {
             agent.kill();
         }
         hasSimulationStarted = false;
@@ -199,7 +206,7 @@ public class ElevatorGUI {
         prettyLog();
     }
 
-    public void prettyLog() {
+    private void prettyLog() {
         StringBuilder stringToLog = new StringBuilder();
         for (int i = maxFloors - 1; i >= 0; i--) {
             stringToLog.append("|");
@@ -215,19 +222,19 @@ public class ElevatorGUI {
     public boolean hasSimulationStarted() {
         return hasSimulationStarted;
     }
-    
+
     public int getMaxFloors() {
         return maxFloors;
     }
-    
+
     public int getNumOfElevators() {
         return numOfElevators;
     }
-    
+
     public int getMaxCapacity() {
         return maxCapacity;
     }
-    
+
     public Vector<AgentController> getAgentControllers() {
         return agentControllers;
     }
