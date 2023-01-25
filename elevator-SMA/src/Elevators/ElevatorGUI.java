@@ -15,6 +15,7 @@ public class ElevatorGUI {
     private final AID simulatorAID;
     private boolean hasSimulationStarted;
     private int maxFloors, numOfElevators, maxCapacity;
+    private int[][] elevatorStatus;
     
     public ElevatorGUI(PlatformController platformController, AID simulatorAID) {
         this.platformController = platformController;
@@ -172,12 +173,15 @@ public class ElevatorGUI {
         log("Simulação Iniciada: Edificio com " + maxFloors + " pisos e " + numElevators + " elevadores, cada um" +
                 " com lotação " + maxCapacity);
         hasSimulationStarted = true;
+        elevatorStatus = new int[maxFloors][numOfElevators];
     }
     
     private void OnStopSimulation() throws StaleProxyException {
         for (AgentController agent: agentControllers) {
             agent.kill();
         }
+        hasSimulationStarted = false;
+        elevatorStatus = null;
     }
 
     private void OnCallElevator(int currentFloor, int desiredFloor) {
@@ -187,13 +191,20 @@ public class ElevatorGUI {
     public void log(String msg) {
         logPane.setText(logPane.getText() + "\n> " + msg);
     }
-    
-    public void prettyLog(int elevatorNum, int currentFloor) {
+
+    public void moveElevator(int elevatorNum, int currentFloor) {
+        for (int i = 0; i < elevatorStatus.length; i++)
+            elevatorStatus[i][elevatorNum - 1] = 0;
+        elevatorStatus[currentFloor][elevatorNum - 1] = 1;
+        prettyLog();
+    }
+
+    public void prettyLog() {
         StringBuilder stringToLog = new StringBuilder();
-        for (int i = maxFloors; i >= 0; i--) {
+        for (int i = maxFloors - 1; i >= 0; i--) {
             stringToLog.append("|");
-            for (int j = 1; j <= numOfElevators; j++) {
-                if (elevatorNum == j && currentFloor == i) stringToLog.append("[]|");
+            for (int j = 0; j < numOfElevators; j++) {
+                if (elevatorStatus[i][j] == 1) stringToLog.append("[]|");
                 else stringToLog.append("--|");
             }
             stringToLog.append("\n");

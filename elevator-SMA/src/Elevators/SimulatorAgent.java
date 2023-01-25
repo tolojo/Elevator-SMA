@@ -21,6 +21,7 @@ public class SimulatorAgent extends Agent {
     private AID myAid = getAID();
     private Vector<AID> elevatorsAID = new Vector<>();
     private int maxFloors, numOfElevators, maxCapacity;
+    private int flag;
 
     public void setup() {
         DFAgentDescription dfd = new DFAgentDescription();
@@ -45,12 +46,15 @@ public class SimulatorAgent extends Agent {
         addBehaviour(new CyclicBehaviour() {
             @Override
             public void action() {
-                if (elevatorGUI.hasSimulationStarted()) {
+                if (elevatorGUI.hasSimulationStarted() && flag == 0) {
                     maxFloors = elevatorGUI.getMaxFloors();
                     numOfElevators = elevatorGUI.getNumOfElevators();
                     maxCapacity = elevatorGUI.getMaxCapacity();
                     startSimulation();
-                    removeBehaviour(this);
+                    flag = 1;
+                }
+                if (!elevatorGUI.hasSimulationStarted() && flag == 1) {
+                    flag = 0;
                 }
             }
         });
@@ -121,7 +125,7 @@ public class SimulatorAgent extends Agent {
                     String[] msgSplit = info.split(",");
                     int receivedFloor = Integer.parseInt(msgSplit[1]);
                     int agentIndex = Integer.parseInt(msgSplit[2]);
-                    elevatorGUI.prettyLog(agentIndex, receivedFloor);
+                    elevatorGUI.moveElevator(agentIndex, receivedFloor);
                 }
             }
         });
