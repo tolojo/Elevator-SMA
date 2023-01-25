@@ -2,20 +2,25 @@ package Elevators;
 
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
+import jade.wrapper.ControllerException;
+import jade.wrapper.StaleProxyException;
 
 import java.util.Random;
 import java.util.Vector;
 
 public class SimulatorAgent extends Agent {
-    AID myAid = getAID();
-    Vector<AID> elevatorsAID = new Vector<>();
-    int maxFloors = 6;
+
+    private ElevatorGUI elevatorGUI;
+    private AID myAid = getAID();
+    private Vector<AID> elevatorsAID = new Vector<>();
+    private int maxFloors, numOfElevators, maxCapacity;
 
     public void setup() {
         DFAgentDescription dfd = new DFAgentDescription();
@@ -30,6 +35,28 @@ public class SimulatorAgent extends Agent {
             fe.printStackTrace();
         }
 
+        try {
+            elevatorGUI = new ElevatorGUI(getContainerController().getPlatformController(), getAID());
+            elevatorGUI.getJFrame().setVisible(true);
+        } catch (ControllerException e) {
+            throw new RuntimeException(e);
+        }
+
+        addBehaviour(new CyclicBehaviour() {
+            @Override
+            public void action() {
+                if (elevatorGUI.hasSimulationStarted()) {
+                    maxFloors = elevatorGUI.getMaxFloors();
+                    numOfElevators = elevatorGUI.getNumOfElevators();
+                    maxCapacity = elevatorGUI.getMaxCapacity();
+                    startSimulation();
+                    removeBehaviour(this);
+                }
+            }
+        });
+    }
+
+    private void startSimulation() {
         addBehaviour(
                 new TickerBehaviour(this, 3000) {
                     protected void onTick() {
@@ -37,10 +64,9 @@ public class SimulatorAgent extends Agent {
                             Vector<AID> elevatorAux = new Vector<>();
                             DFAgentDescription dfd = new DFAgentDescription();
                             ServiceDescription sd = new ServiceDescription();
-                            sd.setType("elevator");
+                            sd.setType("Elevator-Agent");
                             dfd.addServices(sd);
                             DFAgentDescription[] result = DFService.search(this.getAgent(), dfd);
-                            //System.out.println(result.length + " results");
                             if (result.length > 0) {
                                 for (DFAgentDescription dfAgentDescription : result) {
                                     elevatorAux.addElement(dfAgentDescription.getName());
@@ -49,30 +75,27 @@ public class SimulatorAgent extends Agent {
                             }
 
                         } catch (FIPAException e) {
-                            // TODO Auto-generated catch block
                             e.printStackTrace();
                         }
                     }
                 }
         );
 
+        // Gerar pedidos aleatorios
         addBehaviour(new TickerBehaviour(this, 10000) {
             protected void onTick() {
-                int numOfElevators = elevatorsAID.size();
-                if (numOfElevators == 1) {
-                    System.out.println("Sou o unico na lista");
+                if (numOfElevators <= 1) {
                     return;
                 }
                 Random random = new Random();
                 int randomElevator = random.nextInt(numOfElevators);
-                System.out.println(elevatorsAID.get(randomElevator).getName());
 
+                //Vamos escolher um dos elevadores na DF que nao seja o agente Simulador
                 while (elevatorsAID.get(randomElevator).getName().equals(getName())) {
-                    randomElevator = random.nextInt(numOfElevators); //Vamos escolher um dos elevadores na DF que nao seja o agente Simulador
+                    randomElevator = random.nextInt(numOfElevators);
                 }
 
                 AID elevAid = elevatorsAID.get(randomElevator);
-                System.out.println("AID ESCOLHIDO = " + elevAid.getLocalName());
                 int destinationFloor = random.nextInt(maxFloors);
                 int initialFloor = random.nextInt(maxFloors);
                 while (destinationFloor == initialFloor) {
@@ -82,8 +105,24 @@ public class SimulatorAgent extends Agent {
                 aclMessage.setPerformative(ACLMessage.REQUEST);
                 aclMessage.addReceiver((AID) elevAid);
                 aclMessage.setContent(initialFloor + "," + destinationFloor);
-                System.out.println(aclMessage.getContent());
                 myAgent.send(aclMessage);
+                System.out.println("> Novo pedido no piso " + initialFloor + " para o piso " + destinationFloor +
+                        ". Elevador escolhido: " + elevAid.getLocalName());
+            }
+        });
+        
+        // Recebe mensagens de informaçao dos elevadores para mostrar na GUI
+        addBehaviour(new CyclicBehaviour() {
+            @Override
+            public void action() {
+                ACLMessage aclMessage = myAgent.receive();
+                if (aclMessage != null && aclMessage.getPerformative() == ACLMessage.INFORM) {
+                    String info = aclMessage.getContent();
+                    String[] msgSplit = info.split(",");
+                    int receivedFloor = Integer.parseInt(msgSplit[1]);
+                    int agentIndex = Integer.parseInt(msgSplit[2]);
+                    elevatorGUI.prettyLog(agentIndex, receivedFloor);
+                }
             }
         });
     }

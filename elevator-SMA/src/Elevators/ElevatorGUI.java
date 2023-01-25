@@ -1,28 +1,24 @@
 package Elevators;
 
 import jade.core.AID;
-import jade.core.Agent;
-import jade.core.ProfileImpl;
-import jade.core.Runtime;
-import jade.util.Logger;
 import jade.wrapper.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.logging.Level;
+import java.util.Vector;
 
-public class ElevatorGUI extends Agent {
+public class ElevatorGUI {
     private JFrame frame = null;
-    private SimulatorAgent simulatorAgent;
     private JTextPane logPane;
-
-    @Override
-    protected void setup() {
-        try {
-            getJFrame().setVisible(true);
-        } catch (StaleProxyException ex) {
-            Logger.getLogger(ElevatorGUI.class.getName()).log(Level.SEVERE, null, ex);
-        }
+    private final Vector<AgentController> agentControllers = new Vector<>();
+    private PlatformController platformController;
+    private final AID simulatorAID;
+    private boolean hasSimulationStarted;
+    private int maxFloors, numOfElevators, maxCapacity;
+    
+    public ElevatorGUI(PlatformController platformController, AID simulatorAID) {
+        this.platformController = platformController;
+        this.simulatorAID = simulatorAID;
     }
 
     public JFrame getJFrame() throws StaleProxyException {
@@ -62,20 +58,20 @@ public class ElevatorGUI extends Agent {
             JButton btnNewButton = new JButton("Iniciar Simulação");
             btnNewButton.addActionListener(e -> {
                 try {
-                    int maxFloors = (int) spinner.getValue();
-                    int numElevators = (int) spinner_1.getValue();
-                    int maxCapacity = (int) spinner_2.getValue();
+                    maxFloors = (int) spinner.getValue();
+                    numOfElevators = (int) spinner_1.getValue();
+                    maxCapacity = (int) spinner_2.getValue();
                     if (maxFloors <= 1) {
                         throw new RuntimeException("Precisa indicar pelo menos 2 pisos.");
                     }
-                    if (numElevators <= 0) {
+                    if (numOfElevators <= 0) {
                         throw new RuntimeException("Precisa indicar pelo menos 1 elevador.");
                     }
                     if (maxCapacity <= 0) {
                         throw new RuntimeException("Os elevadores precisam de uma capacidade de pelo menos 1 pessoa.");
                     }
 
-                    OnStartSimulation(maxFloors, numElevators, maxCapacity);
+                    OnStartSimulation(maxFloors, numOfElevators, maxCapacity);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(null, ex.getMessage(),
                             "Erro ao iniciar simulação", JOptionPane.ERROR_MESSAGE);
@@ -88,7 +84,11 @@ public class ElevatorGUI extends Agent {
 
             JButton btnPararSimulao = new JButton("Parar Simulação");
             btnPararSimulao.addActionListener(e -> {
-                OnStopSimulation();
+                try {
+                    OnStopSimulation();
+                } catch (StaleProxyException ex) {
+                    throw new RuntimeException(ex);
+                }
             });
             btnPararSimulao.setFont(new Font("Tahoma", Font.PLAIN, 17));
             btnPararSimulao.setBounds(196, 146, 176, 33);
@@ -145,7 +145,8 @@ public class ElevatorGUI extends Agent {
             frame.getContentPane().add(scrollPane);
 
             logPane = new JTextPane();
-            logPane.setFont(new Font("Tahoma", Font.PLAIN, 12));
+            logPane.setEditable(false);
+            logPane.setFont(new Font("Tahoma", Font.PLAIN, 16));
             scrollPane.setViewportView(logPane);
 
             JButton btnLimparLogs = new JButton("Limpar Logs");
@@ -161,23 +162,62 @@ public class ElevatorGUI extends Agent {
     }
 
     private void OnStartSimulation(int maxFloors, int numElevators, int maxCapacity) throws ControllerException {
-        PlatformController container = getContainerController();
-        AgentController agent = container.createNewAgent("SimulatorAgent", "elevator-SMA.Elevators.ElevatorAgent",
-                new Object[]{maxFloors, numElevators, maxCapacity});
-        agent.start();
-        Log("Simulação Iniciada: Edificio com " + maxFloors + " pisos e " + numElevators + " elevadores, cada um" +
+        for (int i = 1; i <= numElevators; i++) {
+            AgentController elevatorAgent = platformController.createNewAgent("ElevatorAgent-" + i, "Elevators.ElevatorAgent",
+                    new Object[]{simulatorAID, i, maxCapacity});
+            elevatorAgent.start();
+            agentControllers.add(elevatorAgent);
+        }
+        
+        log("Simulação Iniciada: Edificio com " + maxFloors + " pisos e " + numElevators + " elevadores, cada um" +
                 " com lotação " + maxCapacity);
+        hasSimulationStarted = true;
     }
-
-    private void OnStopSimulation() {
-
+    
+    private void OnStopSimulation() throws StaleProxyException {
+        for (AgentController agent: agentControllers) {
+            agent.kill();
+        }
     }
 
     private void OnCallElevator(int currentFloor, int desiredFloor) {
 
     }
 
-    public void Log(String msg) {
+    public void log(String msg) {
         logPane.setText(logPane.getText() + "\n> " + msg);
+    }
+    
+    public void prettyLog(int elevatorNum, int currentFloor) {
+        StringBuilder stringToLog = new StringBuilder();
+        for (int i = maxFloors; i >= 0; i--) {
+            stringToLog.append("|");
+            for (int j = 1; j <= numOfElevators; j++) {
+                if (elevatorNum == j && currentFloor == i) stringToLog.append("[]|");
+                else stringToLog.append("--|");
+            }
+            stringToLog.append("\n");
+        }
+        logPane.setText(stringToLog.toString());
+    }
+
+    public boolean hasSimulationStarted() {
+        return hasSimulationStarted;
+    }
+    
+    public int getMaxFloors() {
+        return maxFloors;
+    }
+    
+    public int getNumOfElevators() {
+        return numOfElevators;
+    }
+    
+    public int getMaxCapacity() {
+        return maxCapacity;
+    }
+    
+    public Vector<AgentController> getAgentControllers() {
+        return agentControllers;
     }
 }
