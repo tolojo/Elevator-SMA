@@ -5,7 +5,6 @@ import jade.core.ProfileImpl;
 import jade.core.Runtime;
 import jade.util.Logger;
 import jade.wrapper.AgentContainer;
-import jade.wrapper.AgentController;
 import jade.wrapper.StaleProxyException;
 
 import javax.swing.*;
@@ -14,7 +13,7 @@ import java.util.logging.Level;
 
 public class ElevatorGUI extends Agent {
     private JFrame frame = null;
-    private Simulator simulator;
+    private SimulatorAgent simulatorAgent;
     private JTextPane logPane;
 
     @Override
