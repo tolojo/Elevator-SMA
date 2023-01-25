@@ -56,7 +56,7 @@ public class simpleElevator extends Agent {
       }
     );
 
-    Behaviour receiveTask = new CyclicBehaviour() {
+    /*Behaviour receiveTask = new CyclicBehaviour() {
       @Override
       public void action() {
         ACLMessage task = myAgent.receive();
@@ -69,12 +69,13 @@ public class simpleElevator extends Agent {
         }}
       }
     };
+
   addBehaviour(tbf.wrap(receiveTask));
+     */
     addBehaviour(new TickerBehaviour(this, 1000) {
       @Override
       protected void onTick() {
-        try {
-          ACLMessage msg = tasks.dequeue();
+          ACLMessage msg = myAgent.receive();
 
         if (msg != null) {
           if (msg.getPerformative() == ACLMessage.REQUEST) {
@@ -113,14 +114,14 @@ public class simpleElevator extends Agent {
               ACLMessage msgEle = new ACLMessage(ACLMessage.REQUEST);
               msgEle.setPerformative(ACLMessage.REQUEST);
               //enviar mensagem para o elevador mais próximo
-              System.out.println("Enviar mensagem para o elevador mais proximo " + minAID);
+              System.out.println(myAgent.getLocalName() + " a enviar mensagem para o elevador mais proximo " + minAID);
               for (int i = 0; i<elevators.size(); ++i){
                 if(elevators.get(i).getLocalName().equals(minAID)) {
-                  msg.addReceiver(elevators.get(i));
+                  msgEle.addReceiver(elevators.get(i));
                 }
               }
               msgEle.setContent(pisoInicial + "," + pisoDestino);
-              this.myAgent.send(msg);
+              this.myAgent.send(msgEle);
 
             }
 
@@ -147,9 +148,6 @@ public class simpleElevator extends Agent {
           }
         }
         msg = null;
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
       }
     });
 
