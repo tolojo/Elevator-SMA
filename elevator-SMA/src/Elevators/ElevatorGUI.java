@@ -5,27 +5,32 @@ import jade.wrapper.*;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Vector;
 
 public class ElevatorGUI {
     private JFrame frame = null;
     private JTextPane logPane;
     private final Vector<AgentController> agentControllers = new Vector<>();
-    private PlatformController platformController;
+    private final PlatformController platformController;
     private final AID simulatorAID;
+    private final SimulatorAgent simulatorAgent;
     private boolean hasSimulationStarted;
     private int maxFloors, numOfElevators, maxCapacity;
     private int[][] elevatorStatus;
+    private final ArrayList<int[]> callsForElevator = new ArrayList<>();
 
-    public ElevatorGUI(PlatformController platformController, AID simulatorAID) {
-        this.platformController = platformController;
-        this.simulatorAID = simulatorAID;
+    public ElevatorGUI(SimulatorAgent simulatorAgent) throws ControllerException {
+        this.simulatorAgent = simulatorAgent;
+        platformController = simulatorAgent.getContainerController().getPlatformController();
+        simulatorAID = simulatorAgent.getAID();
     }
 
     public JFrame getJFrame() throws StaleProxyException {
         if (frame == null) {
             frame = new JFrame("Simulador de Elevadores utilizando Agentes");
-            frame.setBounds(100, 100, 1000, 410);
+            frame.setBounds(100, 100, 1300, 410);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.getContentPane().setLayout(null);
 
@@ -147,7 +152,7 @@ public class ElevatorGUI {
 
             JScrollPane scrollPane = new JScrollPane();
             scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
-            scrollPane.setBounds(440, 11, 536, 350);
+            scrollPane.setBounds(440, 11, 836, 350);
             frame.getContentPane().add(scrollPane);
 
             logPane = new JTextPane();
@@ -181,18 +186,18 @@ public class ElevatorGUI {
                 " com lotação " + maxCapacity);
         hasSimulationStarted = true;
         elevatorStatus = new int[maxFloors][numOfElevators];
+        Arrays.stream(elevatorStatus).forEach(a -> Arrays.fill(a, -1));
     }
 
     private void OnStopSimulation() throws StaleProxyException {
-        for (AgentController agent : agentControllers) {
-            agent.kill();
-        }
+        for (AgentController agent : agentControllers) agent.kill();
         hasSimulationStarted = false;
         elevatorStatus = null;
+        callsForElevator.clear();
     }
 
     private void OnCallElevator(int currentFloor, int desiredFloor) {
-
+        simulatorAgent.callElevator(currentFloor, desiredFloor);
     }
 
     public void log(String msg) {
@@ -201,18 +206,32 @@ public class ElevatorGUI {
 
     public void moveElevator(int elevatorNum, int currentFloor) {
         for (int i = 0; i < elevatorStatus.length; i++)
-            elevatorStatus[i][elevatorNum - 1] = 0;
-        elevatorStatus[currentFloor][elevatorNum - 1] = 1;
+            elevatorStatus[i][elevatorNum - 1] = -1;
+        elevatorStatus[currentFloor][elevatorNum - 1] = 0;
+
+        int indexToRemove = -1;
+        for (int i = 0; i < callsForElevator.size(); i++)
+            if (callsForElevator.get(i)[0] == currentFloor) indexToRemove = i;
+        if (indexToRemove != -1) callsForElevator.remove(indexToRemove);
+        prettyLog();
+    }
+
+    public void newCallForElevator(int currentFloor, int desiredFloor) {
+        callsForElevator.add(new int[]{currentFloor, desiredFloor});
         prettyLog();
     }
 
     private void prettyLog() {
+        if (!hasSimulationStarted) return;
         StringBuilder stringToLog = new StringBuilder();
         for (int i = maxFloors - 1; i >= 0; i--) {
-            stringToLog.append("|");
+            stringToLog.append("Piso ").append(String.format("%02d", i)).append(" |");
             for (int j = 0; j < numOfElevators; j++) {
-                if (elevatorStatus[i][j] == 1) stringToLog.append("[]|");
-                else stringToLog.append("--|");
+                if (elevatorStatus[i][j] >= 0) stringToLog.append(" [").append(elevatorStatus[i][j]).append("] |");
+                else stringToLog.append("      |");
+            }
+            for (int[] call : callsForElevator) {
+                if (call[0] == i) stringToLog.append(" Pedido: Piso ").append(call[1]);
             }
             stringToLog.append("\n");
         }

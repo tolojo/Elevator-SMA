@@ -188,6 +188,18 @@ public class ElevatorAgent extends Agent {
         });
     }
 
+    @Override
+    protected void takeDown() {
+        DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
+        try {
+            DFService.deregister(this, dfd);
+        } catch (FIPAException e) {
+            e.printStackTrace();
+        }
+        doDelete();
+    }
+
     //Apanhar todos os agentes registados na df
     private Vector<AID> getAgents(Agent agent) {
         Vector<AID> elevatorAux = new Vector<>();
@@ -259,8 +271,6 @@ public class ElevatorAgent extends Agent {
         }
 
     }
-
-
 
     public void setState(AgentState state) {
         myState = state;
