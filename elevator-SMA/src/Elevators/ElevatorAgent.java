@@ -90,8 +90,6 @@ public class ElevatorAgent extends Agent {
 
                         if (isChoosen) {
                             try {
-
-
                                 //verificação do piso do elevador com o piso do pedido
                                 while (initialFloor != currentFloor) {
                                     System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + initialFloor + " a partir do piso " + currentFloor + ".");

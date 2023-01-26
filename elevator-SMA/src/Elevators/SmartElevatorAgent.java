@@ -24,7 +24,7 @@ public class SmartElevatorAgent extends Agent{
     private enum AgentState {StandBy, MovingUp, MovingDown;}
     private final ThreadedBehaviourFactory tbf = new ThreadedBehaviourFactory();
     private final int movementDuration = 2;
-    private final HashMap<Integer, Integer> currentRequests = new HashMap<>();
+    private ArrayList<Request> currentRequests = new ArrayList<Request>();
     ArrayList<Floor> mostCalledFloors = new ArrayList<>();
     private BlockingQueue<ACLMessage> tasksACL = new BlockingQueue<>(6);
     private Vector<AID> elevatorsAID = new Vector<>();
@@ -85,21 +85,24 @@ public class SmartElevatorAgent extends Agent{
                     if (myState.equals(SmartElevatorAgent.AgentState.StandBy)) {
                         try {
                             while (floorAux.getFloor() != currentFloor) {
-                                System.out.println("Elevador " + myAgent.getLocalName() + " movendo para o piso de origem mais chamado" + floorAux.getFloor() + " a partir do piso " + currentFloor + " .");
+                                informCurrentFloor(myAgent, currentFloor, false);
+                                System.out.println("Elevador " + myAgent.getLocalName() + " movendo para o piso de origem mais chamado: " + floorAux.getFloor() + " a partir do piso " + currentFloor + " .");
                                 numberOfMovs++;
                                 if (floorAux.getFloor() < currentFloor) {
+                                    myState = SmartElevatorAgent.AgentState.MovingDown;
                                     Thread.sleep(movementDuration * 1000);
                                     currentFloor--;
                                 } else {
+                                    myState = SmartElevatorAgent.AgentState.MovingUp;
                                     Thread.sleep(movementDuration * 1000);
                                     currentFloor++;
                                 }
+
                             }
+                            myState = SmartElevatorAgent.AgentState.StandBy;
                         } catch (InterruptedException e) {
                             throw new RuntimeException(e);
                         }
-
-
                     }
                 }
             }
@@ -119,7 +122,8 @@ public class SmartElevatorAgent extends Agent{
                         int initialFloor = Integer.parseInt(splitFloors[0]);
                         int destinationFloor = Integer.parseInt(splitFloors[1]);
                         int distance = abs(currentFloor - initialFloor);
-                        currentRequests.put(initialFloor, destinationFloor);
+                        Request request = new Request(initialFloor,destinationFloor);
+                        currentRequests.add(request);
                         boolean isChoosen = true;
                         String minAID = "";
                         //verificação de elevador mais perto
@@ -133,8 +137,8 @@ public class SmartElevatorAgent extends Agent{
 
                         if (isChoosen) {
                             try {
-
-
+                                //atualizar o andar mais chamado
+                                updateMostCalled(request);
                                 //verificação do piso do elevador com o piso do pedido
                                 while (initialFloor != currentFloor) {
                                     System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + initialFloor + " a partir do piso " + currentFloor + ".");
@@ -263,5 +267,18 @@ public class SmartElevatorAgent extends Agent{
 
     public void setState(AgentState state) {
         myState = state;
+    }
+
+    public void updateMostCalled(Request request){
+        if(mostCalledFloors.isEmpty()){
+            Floor floor = new Floor(request.getInitialFloor(),1);
+            mostCalledFloors.add(floor);
+        }else {
+        for (int i = 0; i < mostCalledFloors.size(); i++) {
+            if(mostCalledFloors.get(i).getFloor() == request.getInitialFloor()){
+                mostCalledFloors.get(i).setFrequencyCalled(mostCalledFloors.get(i).getFrequencyCalled()+1);
+            }
+        }
+    }
     }
 }
