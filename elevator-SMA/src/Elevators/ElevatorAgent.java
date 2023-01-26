@@ -31,6 +31,7 @@ public class ElevatorAgent extends Agent {
     private Vector<AID> elevatorsAID = new Vector<>();
     private AgentState myState = AgentState.StandBy;
     private AID simulatorAID;
+    private int numberOfMovs = 0;
     private int currentFloor, maxCapacity, myIndex;
 
     public void setup() {
@@ -89,7 +90,7 @@ public class ElevatorAgent extends Agent {
 
                         if (isChoosen) {
                             try {
-                                int numberOfMovs = 0;
+
 
                                 //verificação do piso do elevador com o piso do pedido
                                 while (initialFloor != currentFloor) {
@@ -136,6 +137,7 @@ public class ElevatorAgent extends Agent {
                                 }
 
                                 System.out.println(myAgent.getLocalName() + " chegou ao piso destino " + destinationFloor);
+                                myState = AgentState.StandBy;
                                 informCurrentFloor(this.getAgent(), currentFloor, true);
                                 myState = AgentState.StandBy;
                             } catch (InterruptedException e) {
