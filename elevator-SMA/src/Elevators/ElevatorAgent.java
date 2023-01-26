@@ -10,6 +10,7 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
@@ -22,8 +23,8 @@ public class ElevatorAgent extends Agent {
 
     private final HashMap<String, Integer> elevatorLocation = new HashMap<>();
     private final ThreadedBehaviourFactory tbf = new ThreadedBehaviourFactory();
-    private final HashMap<Integer, Integer> allRequests = new HashMap<>();
-    private final HashMap<Integer, Integer> currentRequests = new HashMap<>();
+    private ArrayList<Request> currentRequests = new ArrayList<Request>();
+    private ArrayList<Request> untakenRequests = new ArrayList<Request>();
     private final int movementDuration = 2;
     private final int movementCost = 5;
     private BlockingQueue<ACLMessage> tasksACL = new BlockingQueue<>(6);
@@ -60,34 +61,21 @@ public class ElevatorAgent extends Agent {
                 }
         );
 
-    /*Behaviour receiveTask = new CyclicBehaviour() {
-      @Override
-      public void action() {
-        ACLMessage task = myAgent.receive();
-        if(task != null){
-        try {
-          tasks.enqueue(task);
-          task = null;
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }}
-      }
-    };
-
-  addBehaviour(tbf.wrap(receiveTask));
-     */
         addBehaviour(new TickerBehaviour(this, 1000) {
             @Override
             protected void onTick() {
                 ACLMessage aclMessage = myAgent.receive();
 
                 if (aclMessage != null) {
+
                     if (aclMessage.getPerformative() == ACLMessage.REQUEST && myState == AgentState.StandBy) {
                         String[] splitFloors = aclMessage.getContent().split(",");
                         int initialFloor = Integer.parseInt(splitFloors[0]);
                         int destinationFloor = Integer.parseInt(splitFloors[1]);
                         int distance = abs(currentFloor - initialFloor);
-                        currentRequests.put(initialFloor, destinationFloor);
+                        Request request = new Request(initialFloor,destinationFloor);
+                        currentRequests.add(request);
+
                         boolean isChoosen = true;
                         String minAID = "";
                         //verificação de elevador mais perto
@@ -113,11 +101,15 @@ public class ElevatorAgent extends Agent {
                                         myState = AgentState.MovingDown;
                                         Thread.sleep(movementDuration * 1000L);
                                         currentFloor--;
+                                        checkFloorOut(currentFloor);
+                                        checkFloorIn(currentFloor,myState);
                                         // Subir andar
                                     } else {
-                                        Thread.sleep(movementDuration * 1000L);
                                         myState = AgentState.MovingUp;
+                                        Thread.sleep(movementDuration * 1000L);
                                         currentFloor++;
+                                        checkFloorOut(currentFloor);
+                                        checkFloorIn(currentFloor,myState);
                                     }
                                 }
 
@@ -128,17 +120,24 @@ public class ElevatorAgent extends Agent {
                                     informCurrentFloor(myAgent, currentFloor, false);
                                     // Descer andar
                                     if (destinationFloor < currentFloor) {
+                                        myState = AgentState.MovingDown;
                                         Thread.sleep(movementDuration * 1000L);
                                         currentFloor--;
+                                        checkFloorOut(currentFloor);
+                                        checkFloorIn(currentFloor,myState);
                                         // Subir andar
                                     } else {
+                                        myState = AgentState.MovingUp;
                                         Thread.sleep(movementDuration * 1000L);
                                         currentFloor++;
+                                        checkFloorOut(currentFloor);
+                                        checkFloorIn(currentFloor,myState);
                                     }
                                 }
 
                                 System.out.println(myAgent.getLocalName() + " chegou ao piso destino " + destinationFloor);
                                 informCurrentFloor(this.getAgent(), currentFloor, true);
+                                myState = AgentState.StandBy;
                             } catch (InterruptedException e) {
                                 throw new RuntimeException(e);
                             }
@@ -171,6 +170,15 @@ public class ElevatorAgent extends Agent {
                             elevatorLocation.put(msgAgent, receivedFloor);
                             System.out.println(myAgent.getLocalName() + " is modifying " + msgAgent + " to floor " + receivedFloor);
                         }
+                    } else /*(aclMessage.getPerformative() == ACLMessage.REQUEST && myState != AgentState.StandBy)*/ {
+                        String[] splitFloors = aclMessage.getContent().split(",");
+                        int initialFloor = Integer.parseInt(splitFloors[0]);
+                        int destinationFloor = Integer.parseInt(splitFloors[1]);
+                        Request request = new Request(initialFloor,destinationFloor);
+                        untakenRequests.add(request);
+                        System.out.println(myAgent.getLocalName() + " adicionou novo pedido");
+
+
                     }
                 }
                 aclMessage = null;
@@ -214,6 +222,43 @@ public class ElevatorAgent extends Agent {
         msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex);
         agent.send(msg);
     }
+
+    private void checkFloorIn(int curFloor, AgentState state){
+        for (int i = 0; i<untakenRequests.size(); i++){
+            if (state == AgentState.MovingUp
+                    && untakenRequests.get(i).getInitialFloor() - untakenRequests.get(i).getDestinationFloor() < 0
+                    && untakenRequests.get(i).getInitialFloor() == curFloor) {
+
+                System.out.println(this.getAID().getLocalName() + " detetada nova pessoa a subir");
+                currentRequests.add(untakenRequests.get(i));
+                untakenRequests.remove(i);
+                untakenRequests.trimToSize();
+
+            } else if (state == AgentState.MovingDown
+                    && untakenRequests.get(i).getInitialFloor() - untakenRequests.get(i).getDestinationFloor() > 0
+                    && untakenRequests.get(i).getInitialFloor() == curFloor) {
+
+                System.out.println(this.getAID().getLocalName() + " detetada nova pessoa a descer");
+                currentRequests.add(untakenRequests.get(i));
+                untakenRequests.remove(i);
+                untakenRequests.trimToSize();
+            }
+        }
+
+    }
+
+    private void checkFloorOut(int curFloor){
+        for (int i = 0; i<currentRequests.size(); i++){
+           if (currentRequests.get(i).getDestinationFloor() == curFloor){
+               currentRequests.remove(i);
+               currentRequests.trimToSize();
+               System.out.println(this.getAID().getLocalName() + " destino alcançado");
+           }
+        }
+
+    }
+
+
 
     public void setState(AgentState state) {
         myState = state;
