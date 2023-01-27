@@ -231,7 +231,7 @@ public class ElevatorAgent extends Agent {
         }
 
         msg.addReceiver(simulatorAID);
-        msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex);
+        msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex + ","+ currentRequests.size());
         agent.send(msg);
     }
 

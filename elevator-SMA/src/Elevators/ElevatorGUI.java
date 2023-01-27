@@ -204,10 +204,10 @@ public class ElevatorGUI {
         logPane.setText(logPane.getText() + "\n> " + msg);
     }
 
-    public void moveElevator(int elevatorNum, int currentFloor) {
+    public void moveElevator(int elevatorNum, int currentFloor, int cargo) {
         for (int i = 0; i < elevatorStatus.length; i++)
             elevatorStatus[i][elevatorNum - 1] = -1;
-        elevatorStatus[currentFloor][elevatorNum - 1] = 0;
+        elevatorStatus[currentFloor][elevatorNum - 1] = cargo;
 
         int indexToRemove = -1;
         for (int i = 0; i < callsForElevator.size(); i++)

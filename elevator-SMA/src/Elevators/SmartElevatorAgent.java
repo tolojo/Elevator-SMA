@@ -3,6 +3,7 @@ package Elevators;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.AgentState;
+import jade.core.NotFoundException;
 import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.ThreadedBehaviourFactory;
@@ -72,9 +73,14 @@ public class SmartElevatorAgent extends Agent{
                 }
         );
 
-        Behaviour moveToMostCalled = new TickerBehaviour(this,5000) {
+        Behaviour moveToMostCalled = new OneShotBehaviour() {
             @Override
-            public void onTick() {
+            public void action() {
+                try {
+                    Thread.sleep(5000L);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
                 if (!mostCalledFloors.isEmpty()) {
                     Floor floorAux = mostCalledFloors.get(0);
                     for (int i = 0; i < mostCalledFloors.size(); i++) {
@@ -82,31 +88,28 @@ public class SmartElevatorAgent extends Agent{
                             floorAux = mostCalledFloors.get(i);
                         }
                     }
-                    if (myState.equals(SmartElevatorAgent.AgentState.StandBy)) {
+                    while (myState == SmartElevatorAgent.AgentState.StandBy && floorAux.getFloor() != currentFloor) {
                         try {
-                            while (floorAux.getFloor() != currentFloor) {
+
                                 informCurrentFloor(myAgent, currentFloor, false);
                                 System.out.println("Elevador " + myAgent.getLocalName() + " movendo para o piso de origem mais chamado: " + floorAux.getFloor() + " a partir do piso " + currentFloor + " .");
                                 numberOfMovs++;
                                 if (floorAux.getFloor() < currentFloor) {
-                                    myState = SmartElevatorAgent.AgentState.MovingDown;
                                     Thread.sleep(movementDuration * 1000);
                                     currentFloor--;
                                 } else {
-                                    myState = SmartElevatorAgent.AgentState.MovingUp;
                                     Thread.sleep(movementDuration * 1000);
                                     currentFloor++;
                                 }
 
-                            }
-                            myState = SmartElevatorAgent.AgentState.StandBy;
+
+
                         } catch (InterruptedException e) {
                             throw new RuntimeException(e);
                         }
                     }
                 }
             }
-
         };
 
         addBehaviour(tbf.wrap(moveToMostCalled));
@@ -117,15 +120,15 @@ public class SmartElevatorAgent extends Agent{
                 ACLMessage aclMessage = myAgent.receive();
 
                 if (aclMessage != null) {
-                    if (aclMessage.getPerformative() == ACLMessage.REQUEST && myState == SmartElevatorAgent.AgentState.StandBy) {
+                    if (aclMessage.getPerformative() == ACLMessage.REQUEST) {
+                        boolean isChoosen = false;
                         String[] splitFloors = aclMessage.getContent().split(",");
                         int initialFloor = Integer.parseInt(splitFloors[0]);
                         int destinationFloor = Integer.parseInt(splitFloors[1]);
                         int distance = abs(currentFloor - initialFloor);
                         Request request = new Request(initialFloor,destinationFloor);
-                        currentRequests.add(request);
-                        boolean isChoosen = true;
                         String minAID = "";
+
                         //verificação de elevador mais perto
                         for (Map.Entry<String, Integer> entry : elevatorLocation.entrySet()) {
                             int distanceAux = abs(entry.getValue() - initialFloor);
@@ -135,7 +138,40 @@ public class SmartElevatorAgent extends Agent{
                             }
                         }
 
+                        if(myState == SmartElevatorAgent.AgentState.StandBy) {
+                            currentRequests.add(request);
+                            isChoosen = true;
+                        }
+
+                        if (myState == SmartElevatorAgent.AgentState.MovingUp){
+                            boolean canAccept = false;
+                            for (int i = 0; i < currentRequests.size(); i++) {
+                                Request rAux = currentRequests.get(i);
+                                if(initialFloor>currentFloor && initialFloor < rAux.getDestinationFloor())
+                                    canAccept = true;
+                            }
+                           if (canAccept){
+                               currentRequests.add(request);
+                           }
+
+                        }
+
+                        if (myState == SmartElevatorAgent.AgentState.MovingDown){
+                            boolean canAccept = false;
+                            for (int i = 0; i < currentRequests.size(); i++) {
+                                Request rAux = currentRequests.get(i);
+                                if(initialFloor<currentFloor && initialFloor > rAux.getDestinationFloor())
+                                    canAccept = true;
+                            }
+                            if (canAccept){
+                                currentRequests.add(request);
+                            }
+
+                        }
+
+
                         if (isChoosen) {
+                                tbf.interrupt();
                             try {
                                 //atualizar o andar mais chamado
                                 updateMostCalled(request);
@@ -172,6 +208,7 @@ public class SmartElevatorAgent extends Agent{
                                         currentFloor++;
                                     }
                                 }
+                                currentRequests.remove(0);
                                 myState = SmartElevatorAgent.AgentState.StandBy;
                                 System.out.println(myAgent.getLocalName() + " chegou ao piso destino " + destinationFloor);
                                 informCurrentFloor(this.getAgent(), currentFloor, true);
@@ -191,6 +228,7 @@ public class SmartElevatorAgent extends Agent{
                             msgNextElevator.setContent(initialFloor + "," + destinationFloor);
                             myAgent.send(msgNextElevator);
                         }
+                        addBehaviour(tbf.wrap(moveToMostCalled));
 
                         //receber mensagem de outros elevadores
                     } else if (aclMessage.getPerformative() == ACLMessage.INFORM) {
@@ -261,7 +299,7 @@ public class SmartElevatorAgent extends Agent{
         }
 
         msg.addReceiver(simulatorAID);
-        msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex);
+        msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex + ","+ currentRequests.size());
         agent.send(msg);
     }
 

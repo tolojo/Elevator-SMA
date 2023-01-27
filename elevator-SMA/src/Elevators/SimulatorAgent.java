@@ -144,11 +144,13 @@ public class SimulatorAgent extends Agent {
                 String[] msgSplit = info.split(",");
                 int receivedFloor = Integer.parseInt(msgSplit[1]);
                 int agentIndex = Integer.parseInt(msgSplit[2]);
-                elevatorGUI.moveElevator(agentIndex, receivedFloor);
+                int cargo = Integer.parseInt(msgSplit[3]);
+                elevatorGUI.moveElevator(agentIndex, receivedFloor,cargo);
 
-                //TODO Precisa receber o numero de pessoas dentro do elevador
+
                 //TODO Precisa receber que elevador foi atribuido a cada pedido
             }
+
         }
     }
 }
