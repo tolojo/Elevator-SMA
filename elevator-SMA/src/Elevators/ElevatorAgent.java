@@ -68,6 +68,7 @@ public class ElevatorAgent extends Agent {
                 ACLMessage aclMessage = myAgent.receive();
 
                 if (aclMessage != null) {
+                    System.out.println("Performative"+aclMessage.getPerformative());
 
                     if (aclMessage.getPerformative() == ACLMessage.REQUEST && myState == AgentState.StandBy) {
                         String[] splitFloors = aclMessage.getContent().split(",");
@@ -83,6 +84,7 @@ public class ElevatorAgent extends Agent {
                         for (Map.Entry<String, Integer> entry : elevatorLocation.entrySet()) {
                             int distanceAux = abs(entry.getValue() - initialFloor);
                             if (distance > distanceAux) {
+
                                 isChoosen = false;
                                 minAID = entry.getKey();
                             }
@@ -156,7 +158,8 @@ public class ElevatorAgent extends Agent {
                         }
 
                         //receber mensagem de outros elevadores
-                    } else if (aclMessage.getPerformative() == ACLMessage.INFORM) {
+                    }
+                    if (aclMessage.getPerformative() == ACLMessage.INFORM) {
                         String[] msgSplit = aclMessage.getContent().split(",");
                         String msgAgent = msgSplit[0];
                         int receivedFloor = Integer.parseInt(msgSplit[1]);
@@ -204,7 +207,7 @@ public class ElevatorAgent extends Agent {
         try {
             DFAgentDescription dfd = new DFAgentDescription();
             ServiceDescription sd = new ServiceDescription();
-            sd.setType("elevator");
+            sd.setType("Elevator-Agent");
             dfd.addServices(sd);
             DFAgentDescription[] result = DFService.search(agent, dfd);
             //System.out.println(result.length + " results");
@@ -223,15 +226,17 @@ public class ElevatorAgent extends Agent {
 
     //enviar mensagem aos outros agentes do piso onde se encontra
     private void informCurrentFloor(Agent agent, int floor, boolean informAllAgents) {
-        ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+        ACLMessage msg = new ACLMessage();
         if (informAllAgents) {
-            for (AID aid : elevatorsAID) {
-                msg.addReceiver(aid);
+            for (int i = 0; i < elevatorsAID.size(); i++) {
+
+                msg.addReceiver(elevatorsAID.get(i));
             }
         }
 
         msg.addReceiver(simulatorAID);
         msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex + ","+ currentRequests.size());
+        msg.setPerformative(ACLMessage.INFORM);
         agent.send(msg);
     }
 

@@ -272,7 +272,7 @@ public class SmartElevatorAgent extends Agent{
         try {
             DFAgentDescription dfd = new DFAgentDescription();
             ServiceDescription sd = new ServiceDescription();
-            sd.setType("elevator");
+            sd.setType("Elevator-Agent");
             dfd.addServices(sd);
             DFAgentDescription[] result = DFService.search(agent, dfd);
             //System.out.println(result.length + " results");
