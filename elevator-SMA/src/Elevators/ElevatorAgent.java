@@ -2,6 +2,7 @@ package Elevators;
 
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.ThreadedBehaviourFactory;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
@@ -32,7 +33,7 @@ public class ElevatorAgent extends Agent {
     private AgentState myState = AgentState.StandBy;
     private AID simulatorAID;
     private int numberOfMovs = 0;
-    private int currentFloor, maxCapacity, myIndex;
+    private int currentFloor, maxCapacity, myIndex, currentCapacity, destinationFloor;
 
     public void setup() {
         DFAgentDescription dfd = new DFAgentDescription();
@@ -54,139 +55,147 @@ public class ElevatorAgent extends Agent {
         getAgents(this);
         informCurrentFloor(this, currentFloor, true);
 
-        addBehaviour(
-                new TickerBehaviour(this, 3000) {
-                    protected void onTick() {
-                        elevatorsAID = getAgents(myAgent);
-                    }
-                }
-        );
+        addBehaviour(new TickerBehaviour(this, 3000) {
+            protected void onTick() {
+                elevatorsAID = getAgents(myAgent);
+            }
+        });
 
         addBehaviour(new TickerBehaviour(this, 1000) {
             @Override
             protected void onTick() {
                 ACLMessage aclMessage = myAgent.receive();
-
-                if (aclMessage != null) {
-                    System.out.println("Performative"+aclMessage.getPerformative());
-
-                    if (aclMessage.getPerformative() == ACLMessage.REQUEST && myState == AgentState.StandBy) {
-                        String[] splitFloors = aclMessage.getContent().split(",");
-                        int initialFloor = Integer.parseInt(splitFloors[0]);
-                        int destinationFloor = Integer.parseInt(splitFloors[1]);
-                        int distance = abs(currentFloor - initialFloor);
-                        Request request = new Request(initialFloor,destinationFloor);
-                        currentRequests.add(request);
-
-                        boolean isChoosen = true;
-                        String minAID = "";
-                        //verificação de elevador mais perto
-                        for (Map.Entry<String, Integer> entry : elevatorLocation.entrySet()) {
-                            int distanceAux = abs(entry.getValue() - initialFloor);
-                            if (distance > distanceAux) {
-
-                                isChoosen = false;
-                                minAID = entry.getKey();
-                            }
-                        }
-
-                        if (isChoosen) {
-                            try {
-                                //verificação do piso do elevador com o piso do pedido
-                                while (initialFloor != currentFloor) {
-                                    System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + initialFloor + " a partir do piso " + currentFloor + ".");
-                                    numberOfMovs++;
-                                    informCurrentFloor(myAgent, currentFloor, false);
-                                    // Descer andar
-                                    if (initialFloor < currentFloor) {
-                                        myState = AgentState.MovingDown;
-                                        Thread.sleep(movementDuration * 1000L);
-                                        currentFloor--;
-                                        checkFloorOut(currentFloor);
-                                        checkFloorIn(currentFloor,myState);
-                                        // Subir andar
-                                    } else {
-                                        myState = AgentState.MovingUp;
-                                        Thread.sleep(movementDuration * 1000L);
-                                        currentFloor++;
-                                        checkFloorOut(currentFloor);
-                                        checkFloorIn(currentFloor,myState);
-                                    }
-                                }
-
-                                System.out.println(myAgent.getLocalName() + " está no piso " + currentFloor + ", e vai para o piso " + destinationFloor);
-                                while (destinationFloor != currentFloor) {
-                                    System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + initialFloor + " a partir do piso " + currentFloor + ".");
-                                    numberOfMovs++;
-                                    informCurrentFloor(myAgent, currentFloor, false);
-                                    // Descer andar
-                                    if (destinationFloor < currentFloor) {
-                                        myState = AgentState.MovingDown;
-                                        Thread.sleep(movementDuration * 1000L);
-                                        currentFloor--;
-                                        checkFloorOut(currentFloor);
-                                        checkFloorIn(currentFloor,myState);
-                                        // Subir andar
-                                    } else {
-                                        myState = AgentState.MovingUp;
-                                        Thread.sleep(movementDuration * 1000L);
-                                        currentFloor++;
-                                        checkFloorOut(currentFloor);
-                                        checkFloorIn(currentFloor,myState);
-                                    }
-                                }
-
-                                System.out.println(myAgent.getLocalName() + " chegou ao piso destino " + destinationFloor);
-                                myState = AgentState.StandBy;
-                                informCurrentFloor(this.getAgent(), currentFloor, true);
-                                myState = AgentState.StandBy;
-                            } catch (InterruptedException e) {
-                                throw new RuntimeException(e);
-                            }
-                        } else {
-                            ACLMessage msgNextElevator = new ACLMessage(ACLMessage.REQUEST);
-                            msgNextElevator.setPerformative(ACLMessage.REQUEST);
-                            //enviar mensagem para o elevador mais próximo
-                            System.out.println(myAgent.getLocalName() + " a enviar mensagem para o elevador mais proximo " + minAID);
-                            for (AID aid : elevatorsAID) {
-                                if (aid.getLocalName().equals(minAID)) {
-                                    msgNextElevator.addReceiver(aid);
-                                }
-                            }
-                            msgNextElevator.setContent(initialFloor + "," + destinationFloor);
-                            myAgent.send(msgNextElevator);
-                        }
-
-                        //receber mensagem de outros elevadores
+                try {
+                    if(aclMessage !=null){
+                    tasksACL.enqueue(aclMessage);
+                    addBehaviour(new HandleRequestsBehaviour());
                     }
-                    if (aclMessage.getPerformative() == ACLMessage.INFORM) {
-                        String[] msgSplit = aclMessage.getContent().split(",");
-                        String msgAgent = msgSplit[0];
-                        int receivedFloor = Integer.parseInt(msgSplit[1]);
-                        //se elevador não existir no hashmap
-                        if (!elevatorLocation.containsKey(msgAgent)) {
-                            elevatorLocation.put(msgAgent, receivedFloor);
-                            System.out.println(myAgent.getLocalName() + " adding " + msgAgent + " to floor " + receivedFloor);
-                        }
-                        //se o elevador já existir na hashmap
-                        else {
-                            elevatorLocation.put(msgAgent, receivedFloor);
-                            System.out.println(myAgent.getLocalName() + " is modifying " + msgAgent + " to floor " + receivedFloor);
-                        }
-                    } else /*(aclMessage.getPerformative() == ACLMessage.REQUEST && myState != AgentState.StandBy)*/ {
-                        String[] splitFloors = aclMessage.getContent().split(",");
-                        int initialFloor = Integer.parseInt(splitFloors[0]);
-                        int destinationFloor = Integer.parseInt(splitFloors[1]);
-                        Request request = new Request(initialFloor,destinationFloor);
-                        untakenRequests.add(request);
-                        System.out.println(myAgent.getLocalName() + " adicionou novo pedido");
 
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                /*
+                if (aclMessage != null && aclMessage.getPerformative() == ACLMessage.REQUEST) {
+                    if (myState == AgentState.StandBy) { // verificar tbm se o andar do pedido esta a caminho do destino
+                        // accept and process request
+                    }
+                    // se este elevador nao puder aceitar o pedido, manda para o proximo elevador
+                    else {
+                        int nextIndex;
+                        if (myIndex == elevatorsAID.size()) nextIndex = 0;
+                        else nextIndex = myIndex + 1;
 
+                        AID elevAid = elevatorsAID.get(nextIndex);
+                        ACLMessage aclMessage = new ACLMessage(ACLMessage.REQUEST);
+                        aclMessage.setPerformative(ACLMessage.REQUEST);
+                        aclMessage.addReceiver((AID) elevAid);
+                        aclMessage.setContent(currentFloor + "," + desiredFloor);
+                        send(aclMessage);
                     }
                 }
-                aclMessage = null;
+                */
             }
         });
+    }
+
+    private class HandleRequestsBehaviour extends OneShotBehaviour {
+        @Override
+        public void action() {
+            ACLMessage aclMessage = null;
+            try {
+                aclMessage = tasksACL.dequeue();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            if (aclMessage != null) {
+                if (aclMessage.getPerformative() == ACLMessage.REQUEST && myState == AgentState.StandBy) {
+                    String[] splitFloors = aclMessage.getContent().split(",");
+                    int requestFloor = Integer.parseInt(splitFloors[0]);
+                    int destinationFloor = Integer.parseInt(splitFloors[1]);
+                    int distance = abs(currentFloor - requestFloor);
+                    Request request = new Request(requestFloor,destinationFloor);
+                    currentRequests.add(request);
+
+                    boolean isChoosen = true;
+                    String minAID = "";
+                    //verificação de elevador mais perto
+                    for (Map.Entry<String, Integer> entry : elevatorLocation.entrySet()) {
+                        int distanceAux = abs(entry.getValue() - requestFloor);
+                        if (distance > distanceAux) {
+                            isChoosen = false;
+                            minAID = entry.getKey();
+                        }
+                    }
+
+                    if (isChoosen) {
+                        try {
+                            // mover elevador do piso atual para o piso do pedido
+                            while (requestFloor != currentFloor) {
+                                System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + requestFloor + " a partir do piso " + currentFloor + " com " + currentCapacity + " pessoas");
+                                numberOfMovs++;
+                                informCurrentFloor(myAgent, currentFloor, false);
+                                moveElevatorTo(requestFloor);
+                            }
+                            currentCapacity++;
+                            System.out.println(myAgent.getLocalName() + " recebeu pessoa no piso " + currentFloor + ", e vai para o piso " + destinationFloor);
+
+                            // mover elevador do piso do pedido para o piso destino
+                            while (destinationFloor != currentFloor) {
+                                System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + destinationFloor + " a partir do piso " + currentFloor + " com " + currentCapacity + " pessoas");
+                                numberOfMovs++;
+                                informCurrentFloor(myAgent, currentFloor, false);
+                                moveElevatorTo(destinationFloor);
+                            }
+
+                            System.out.println(myAgent.getLocalName() + " chegou ao piso destino " + destinationFloor  + " com " + currentCapacity + " pessoas");
+                            informCurrentFloor(this.getAgent(), currentFloor, true);
+                            myState = AgentState.StandBy;
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        ACLMessage msgNextElevator = new ACLMessage(ACLMessage.REQUEST);
+                        msgNextElevator.setPerformative(ACLMessage.REQUEST);
+                        //enviar mensagem para o elevador mais próximo
+                        System.out.println(myAgent.getLocalName() + " a enviar mensagem para o elevador mais proximo " + minAID);
+                        for (AID aid : elevatorsAID) {
+                            if (aid.getLocalName().equals(minAID)) {
+                                msgNextElevator.addReceiver(aid);
+                            }
+                        }
+                        msgNextElevator.setContent(requestFloor + "," + destinationFloor);
+                        myAgent.send(msgNextElevator);
+                    }
+
+                    //receber mensagem de outros elevadores
+                }
+
+                if (aclMessage.getPerformative() == ACLMessage.INFORM) {
+                    String[] msgSplit = aclMessage.getContent().split(",");
+                    String msgAgent = msgSplit[0];
+                    int receivedFloor = Integer.parseInt(msgSplit[1]);
+                    //se elevador não existir no hashmap
+                    if (!elevatorLocation.containsKey(msgAgent)) {
+                        elevatorLocation.put(msgAgent, receivedFloor);
+                        System.out.println(myAgent.getLocalName() + " adding " + msgAgent + " to floor " + receivedFloor);
+                    }
+                    //se o elevador já existir na hashmap
+                    else {
+                        elevatorLocation.put(msgAgent, receivedFloor);
+                        System.out.println(myAgent.getLocalName() + " is modifying " + msgAgent + " to floor " + receivedFloor);
+                    }
+                } else /*(aclMessage.getPerformative() == ACLMessage.REQUEST && myState != AgentState.StandBy)*/ {
+                    String[] splitFloors = aclMessage.getContent().split(",");
+                    int initialFloor = Integer.parseInt(splitFloors[0]);
+                    int destinationFloor = Integer.parseInt(splitFloors[1]);
+                    Request request = new Request(initialFloor,destinationFloor);
+                    untakenRequests.add(request);
+                    System.out.println(myAgent.getLocalName() + " adicionou novo pedido");
+                }
+            }
+
+            aclMessage = null;
+        }
     }
 
     @Override
@@ -224,55 +233,75 @@ public class ElevatorAgent extends Agent {
         return elevatorAux;
     }
 
-    //enviar mensagem aos outros agentes do piso onde se encontra
+    // move o elevador na direçao do piso dado como argumento
+    private void moveElevatorTo(int floorToGoTo) throws InterruptedException {
+        // Descer andar
+        if (floorToGoTo < currentFloor) {
+            myState = AgentState.MovingDown;
+            Thread.sleep(movementDuration * 1000L);
+            currentFloor--;
+        }
+        // Subir andar
+        else {
+            myState = AgentState.MovingUp;
+            Thread.sleep(movementDuration * 1000L);
+            currentFloor++;
+        }
+        checkIfShouldAcceptRequests();
+        checkIfPeopleReachedItsFloor();
+
+    }
+
+    // enviar mensagem aos outros agentes do piso onde se encontra
     private void informCurrentFloor(Agent agent, int floor, boolean informAllAgents) {
         ACLMessage msg = new ACLMessage();
         if (informAllAgents) {
-            for (int i = 0; i < elevatorsAID.size(); i++) {
-
+            for (int i = 0; i < elevatorsAID.size(); i++)
                 msg.addReceiver(elevatorsAID.get(i));
-            }
         }
 
         msg.addReceiver(simulatorAID);
-        msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex + ","+ currentRequests.size());
+        msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex + ","+ currentCapacity);
         msg.setPerformative(ACLMessage.INFORM);
         agent.send(msg);
     }
 
-    private void checkFloorIn(int curFloor, AgentState state){
-        for (int i = 0; i<untakenRequests.size(); i++){
-            if (state == AgentState.MovingUp
+    private void checkIfShouldAcceptRequests(){
+        System.out.println("Untaken Requests: "+untakenRequests);
+        for (int i = 0; i < untakenRequests.size(); i++){
+            if (myState == AgentState.MovingUp
                     && untakenRequests.get(i).getInitialFloor() - untakenRequests.get(i).getDestinationFloor() < 0
-                    && untakenRequests.get(i).getInitialFloor() == curFloor) {
-
-                System.out.println(this.getAID().getLocalName() + " detetada nova pessoa a subir");
+                    && untakenRequests.get(i).getInitialFloor() == currentFloor) {
                 currentRequests.add(untakenRequests.get(i));
+                currentCapacity++;
                 untakenRequests.remove(i);
                 untakenRequests.trimToSize();
+                System.out.println(this.getAID().getLocalName() + " entrou nova pessoa a querer subir para o piso " + untakenRequests.get(i).getDestinationFloor());
 
-            } else if (state == AgentState.MovingDown
+            }
+            else if (myState == AgentState.MovingDown
                     && untakenRequests.get(i).getInitialFloor() - untakenRequests.get(i).getDestinationFloor() > 0
-                    && untakenRequests.get(i).getInitialFloor() == curFloor) {
+                    && untakenRequests.get(i).getInitialFloor() == currentFloor) {
 
-                System.out.println(this.getAID().getLocalName() + " detetada nova pessoa a descer");
                 currentRequests.add(untakenRequests.get(i));
+                currentCapacity++;
                 untakenRequests.remove(i);
                 untakenRequests.trimToSize();
+                System.out.println(this.getAID().getLocalName() + " entrou nova pessoa a querer descer para o piso " + untakenRequests.get(i).getDestinationFloor());
             }
         }
-
+        System.out.println("CurrentRequests: "+currentRequests);
     }
 
-    private void checkFloorOut(int curFloor){
-        for (int i = 0; i<currentRequests.size(); i++){
-           if (currentRequests.get(i).getDestinationFloor() == curFloor){
+    private void checkIfPeopleReachedItsFloor(){
+        for (int i = 0; i < currentRequests.size(); i++){
+           if (currentRequests.get(i).getDestinationFloor() == currentFloor){
                currentRequests.remove(i);
+               currentCapacity--;
                currentRequests.trimToSize();
-               System.out.println(this.getAID().getLocalName() + " destino alcançado");
+               System.out.println(this.getAID().getLocalName() + " chegou ao destino");
            }
         }
-
     }
 
     public void setState(AgentState state) {

@@ -46,7 +46,7 @@ public class SimulatorAgent extends Agent {
         }
 
         searchForElevatorsBehaviour = new SearchForElevatorsBehaviour(this, 3000);
-        createCallsBehaviour = new CreateCallsBehaviour(this, 10000);
+        createCallsBehaviour = new CreateCallsBehaviour(this, 15000);
         receiveMsgBehaviour = new ReceiveMsgBehaviour();
 
         addBehaviour(new CyclicBehaviour() {
