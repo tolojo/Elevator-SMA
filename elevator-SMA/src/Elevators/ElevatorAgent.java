@@ -115,24 +115,27 @@ public class ElevatorAgent extends Agent {
                                 }
 
                                 System.out.println(myAgent.getLocalName() + " está no piso " + currentFloor + ", e vai para o piso " + destinationFloor);
-                                while (destinationFloor != currentFloor) {
-                                    System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + initialFloor + " a partir do piso " + currentFloor + ".");
-                                    numberOfMovs++;
-                                    informCurrentFloor(myAgent, currentFloor, false);
-                                    // Descer andar
-                                    if (destinationFloor < currentFloor) {
-                                        myState = AgentState.MovingDown;
-                                        Thread.sleep(movementDuration * 1000L);
-                                        currentFloor--;
-                                        checkFloorOut(currentFloor);
-                                        checkFloorIn(currentFloor,myState);
-                                        // Subir andar
-                                    } else {
-                                        myState = AgentState.MovingUp;
-                                        Thread.sleep(movementDuration * 1000L);
-                                        currentFloor++;
-                                        checkFloorOut(currentFloor);
-                                        checkFloorIn(currentFloor,myState);
+                                while (currentRequests.size()>0) {
+                                    destinationFloor = currentRequests.get(0).getDestinationFloor();
+                                    while (destinationFloor != currentFloor) {
+                                        System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + initialFloor + " a partir do piso " + currentFloor + ".");
+                                        numberOfMovs++;
+                                        informCurrentFloor(myAgent, currentFloor, false);
+                                        // Descer andar
+                                        if (destinationFloor < currentFloor) {
+                                            myState = AgentState.MovingDown;
+                                            Thread.sleep(movementDuration * 1000L);
+                                            currentFloor--;
+                                            checkFloorOut(currentFloor);
+                                            checkFloorIn(currentFloor, myState);
+                                            // Subir andar
+                                        } else {
+                                            myState = AgentState.MovingUp;
+                                            Thread.sleep(movementDuration * 1000L);
+                                            currentFloor++;
+                                            checkFloorOut(currentFloor);
+                                            checkFloorIn(currentFloor, myState);
+                                        }
                                     }
                                 }
 
