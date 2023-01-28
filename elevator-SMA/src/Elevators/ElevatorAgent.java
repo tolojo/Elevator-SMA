@@ -32,7 +32,8 @@ public class ElevatorAgent extends Agent {
     private AgentState myState = AgentState.StandBy;
     private AID simulatorAID;
     private int numberOfMovs = 0;
-    private int currentFloor, maxCapacity, myIndex;
+    private int currentFloor, maxCapacity, myIndex, curCapacity;
+
 
     public void setup() {
         DFAgentDescription dfd = new DFAgentDescription();
@@ -68,7 +69,9 @@ public class ElevatorAgent extends Agent {
                 ACLMessage aclMessage = myAgent.receive();
 
                 if (aclMessage != null) {
+
                     System.out.println("Performative"+aclMessage.getPerformative());
+
 
                     if (aclMessage.getPerformative() == ACLMessage.REQUEST && myState == AgentState.StandBy) {
                         String[] splitFloors = aclMessage.getContent().split(",");
@@ -76,21 +79,31 @@ public class ElevatorAgent extends Agent {
                         int destinationFloor = Integer.parseInt(splitFloors[1]);
                         int distance = abs(currentFloor - initialFloor);
                         Request request = new Request(initialFloor,destinationFloor);
-                        currentRequests.add(request);
-
                         boolean isChoosen = true;
                         String minAID = "";
                         //verificação de elevador mais perto
+                        if(curCapacity>=maxCapacity){
+                            for (Map.Entry<String, Integer> entry : elevatorLocation.entrySet()) {
+                                int distanceAux = abs(entry.getValue() - initialFloor);
+                                if (distance > distanceAux) {
+                                    minAID = entry.getKey();
+                                }
+                            }
+                            System.out.println("Pedido delegado para o agente: "+ minAID);
+                            isChoosen = false;
+                        }
+
                         for (Map.Entry<String, Integer> entry : elevatorLocation.entrySet()) {
                             int distanceAux = abs(entry.getValue() - initialFloor);
                             if (distance > distanceAux) {
-
                                 isChoosen = false;
                                 minAID = entry.getKey();
                             }
                         }
 
                         if (isChoosen) {
+                            currentRequests.add(request);
+                            curCapacity++;
                             try {
                                 //verificação do piso do elevador com o piso do pedido
                                 while (initialFloor != currentFloor) {
@@ -238,7 +251,7 @@ public class ElevatorAgent extends Agent {
         }
 
         msg.addReceiver(simulatorAID);
-        msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex + ","+ currentRequests.size());
+        msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex + ","+ curCapacity);
         msg.setPerformative(ACLMessage.INFORM);
         agent.send(msg);
     }
@@ -273,6 +286,7 @@ public class ElevatorAgent extends Agent {
                currentRequests.remove(i);
                currentRequests.trimToSize();
                System.out.println(this.getAID().getLocalName() + " destino alcançado");
+               curCapacity--;
            }
         }
 
