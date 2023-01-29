@@ -276,14 +276,16 @@ public class ElevatorAgent extends Agent {
 
     private void checkIfShouldAcceptRequests() {
         System.out.println("Untaken Requests: " + untakenRequests);
+        System.out.println("Current Requests: " + currentRequests);
         if (currentCapacity != maxCapacity) {
             for (int i = 0; i < untakenRequests.size(); i++) {
                 Request requestAux = untakenRequests.get(i);
+                System.out.println(requestAux.getInitialFloor() + " " + requestAux.getDestinationFloor());
                 if (myState == AgentState.MovingUp) {
                     System.out.println("a");
                     if (untakenRequests.get(i).getInitialFloor() <= untakenRequests.get(i).getDestinationFloor()) {
                         System.out.println("b");
-                        if (untakenRequests.get(i).getInitialFloor() >= currentFloor) {
+                        if (untakenRequests.get(i).getInitialFloor() <= currentFloor) {
                             System.out.println("c");
                             currentRequests.add(requestAux);
                             currentCapacity++;
@@ -298,7 +300,7 @@ public class ElevatorAgent extends Agent {
                     System.out.println("d");
                     if (untakenRequests.get(i).getInitialFloor() >= untakenRequests.get(i).getDestinationFloor()) {
                         System.out.println("e");
-                        if (untakenRequests.get(i).getInitialFloor() <= currentFloor) {
+                        if (untakenRequests.get(i).getInitialFloor() >= currentFloor) {
                             System.out.println("f");
                             currentRequests.add(requestAux);
                             currentCapacity++;
@@ -310,7 +312,6 @@ public class ElevatorAgent extends Agent {
                 }
             }
         }
-        System.out.println("CurrentRequests: " + currentRequests);
     }
 
     private void checkIfPeopleReachedItsFloor() {
