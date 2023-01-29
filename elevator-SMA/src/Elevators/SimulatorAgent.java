@@ -118,11 +118,9 @@ public class SimulatorAgent extends Agent {
     }
 
     private class CreateCallsBehaviour extends TickerBehaviour {
-
         public CreateCallsBehaviour(Agent a, long period) {
             super(a, period);
         }
-
         @Override
         protected void onTick() {
             if (numOfElevators <= 1) return;
