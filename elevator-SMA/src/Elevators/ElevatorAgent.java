@@ -133,22 +133,23 @@ public class ElevatorAgent extends Agent {
                     if (isChoosen) {
                         while (currentRequests.size() != 0) {
                             try {
+                                Request requestAux = currentRequests.get(0);
                                 // mover elevador do piso atual para o piso do pedido
-                                while (requestFloor != currentFloor) {
+                                while (requestAux.getInitialFloor() != currentFloor) {
                                     System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + requestFloor + " a partir do piso " + currentFloor + " com " + currentCapacity + " pessoas");
                                     numberOfMovs++;
                                     informCurrentFloor(myAgent, currentFloor, false);
-                                    moveElevatorTo(requestFloor);
+                                    moveElevatorTo(requestAux.getInitialFloor());
                                 }
 
                                 System.out.println(myAgent.getLocalName() + " recebeu pessoa no piso " + currentFloor + ", e vai para o piso " + destinationFloor);
 
                                 // mover elevador do piso do pedido para o piso destino
-                                while (destinationFloor != currentFloor) {
+                                while (requestAux.getDestinationFloor() != currentFloor) {
                                     System.out.println(myAgent.getLocalName() + " movendo-se para o piso " + destinationFloor + " a partir do piso " + currentFloor + " com " + currentCapacity + " pessoas");
                                     numberOfMovs++;
                                     informCurrentFloor(myAgent, currentFloor, false);
-                                    moveElevatorTo(destinationFloor);
+                                    moveElevatorTo(requestAux.getDestinationFloor());
                                 }
 
                                 System.out.println(myAgent.getLocalName() + " chegou ao piso destino " + destinationFloor + " com " + currentCapacity + " pessoas");
