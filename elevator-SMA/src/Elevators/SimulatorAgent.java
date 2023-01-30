@@ -46,7 +46,7 @@ public class SimulatorAgent extends Agent {
         }
 
         searchForElevatorsBehaviour = new SearchForElevatorsBehaviour(this, 3000);
-        createCallsBehaviour = new CreateCallsBehaviour(this, 10000);
+        createCallsBehaviour = new CreateCallsBehaviour(this, 15000);
         receiveMsgBehaviour = new ReceiveMsgBehaviour();
 
         addBehaviour(new CyclicBehaviour() {
@@ -118,11 +118,9 @@ public class SimulatorAgent extends Agent {
     }
 
     private class CreateCallsBehaviour extends TickerBehaviour {
-
         public CreateCallsBehaviour(Agent a, long period) {
             super(a, period);
         }
-
         @Override
         protected void onTick() {
             if (numOfElevators <= 1) return;
