@@ -33,7 +33,9 @@ public class ElevatorAgent extends Agent {
     private AgentState myState = AgentState.StandBy;
     private AID simulatorAID;
     private int numberOfMovs = 0;
+
     private int currentFloor, maxCapacity, myIndex, currentCapacity, destinationFloor;
+
 
     public void setup() {
         DFAgentDescription dfd = new DFAgentDescription();
@@ -71,6 +73,7 @@ public class ElevatorAgent extends Agent {
                         addBehaviour(new HandleRequestsBehaviour());
                     }
 
+
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -98,12 +101,15 @@ public class ElevatorAgent extends Agent {
                     Request request = new Request(requestFloor, destinationFloor);
                     boolean isChoosen = true;
                     String minAID = "";
+
                     isChoosen = checkCloserElevator(requestFloor,distance, request);
+
 
                     if (isChoosen) {
                         currentRequests.add(request);
 
                         while (currentRequests.size() != 0) {
+
                             try {
                                 Request requestAux = currentRequests.get(0);
                                 // mover elevador do piso atual para o piso do pedido
@@ -122,6 +128,7 @@ public class ElevatorAgent extends Agent {
                                     numberOfMovs++;
                                     informCurrentFloor(myAgent, currentFloor, false);
                                     moveElevatorTo(requestAux.getDestinationFloor());
+
                                 }
 
                                 System.out.println(myAgent.getLocalName() + " chegou ao piso destino " + destinationFloor + " com " + currentCapacity + " pessoas");
@@ -228,7 +235,9 @@ public class ElevatorAgent extends Agent {
         }
 
         msg.addReceiver(simulatorAID);
+
         msg.setContent(agent.getLocalName() + "," + floor + "," + myIndex + "," + currentCapacity);
+
         msg.setPerformative(ACLMessage.INFORM);
         agent.send(msg);
     }
@@ -288,6 +297,7 @@ public class ElevatorAgent extends Agent {
                 //currentRequests.trimToSize();
                 System.out.println(this.getAID().getLocalName() + " chegou ao destino");
             }
+
         }
     }
 

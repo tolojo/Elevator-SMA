@@ -38,6 +38,7 @@ public class SmartElevatorAgent extends Agent {
     private AgentState myState = AgentState.StandBy;
     private Behaviour moveToMostCalled;
     private HashMap<String, Integer> elevatorLocation = new HashMap<>();
+    private long planThreshold = 5000L;
 
     public void setup() {
         DFAgentDescription dfd = new DFAgentDescription();
@@ -115,7 +116,7 @@ public class SmartElevatorAgent extends Agent {
             @Override
             public void action() {
                 try {
-                    Thread.sleep(5000L);
+                    Thread.sleep(planThreshold);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
