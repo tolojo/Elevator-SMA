@@ -121,6 +121,8 @@ public class ElevatorAgent extends Agent {
 
                     boolean isChoosen = true;
                     String minAID = "";
+                    isChoosen = checkCloserElevator(requestFloor,distance);
+                    /*
                     //verificação de elevador mais perto
                     for (Map.Entry<String, Integer> entry : elevatorLocation.entrySet()) {
                         int distanceAux = abs(entry.getValue() - requestFloor);
@@ -129,6 +131,8 @@ public class ElevatorAgent extends Agent {
                             minAID = entry.getKey();
                         }
                     }
+
+                     */
 
                     if (isChoosen) {
                         while (currentRequests.size() != 0) {
@@ -159,7 +163,7 @@ public class ElevatorAgent extends Agent {
                                 throw new RuntimeException(e);
                             }
                         }
-                    } else {
+                    } /*else {
                         ACLMessage msgNextElevator = new ACLMessage(ACLMessage.REQUEST);
                         currentCapacity--;
                         msgNextElevator.setPerformative(ACLMessage.REQUEST);
@@ -174,6 +178,7 @@ public class ElevatorAgent extends Agent {
                         msgNextElevator.setContent(requestFloor + "," + destinationFloor);
                         myAgent.send(msgNextElevator);
                     }
+                    */
 
                     //receber mensagem de outros elevadores
                 }
@@ -278,36 +283,40 @@ public class ElevatorAgent extends Agent {
     private void checkIfShouldAcceptRequests() {
         System.out.println("Untaken Requests: " + untakenRequests);
         System.out.println("Current Requests: " + currentRequests);
+        boolean isCloser;
         if (currentCapacity != maxCapacity) {
             for (int i = 0; i < untakenRequests.size(); i++) {
                 Request requestAux = untakenRequests.get(i);
                 System.out.println(requestAux.getInitialFloor() + " " + requestAux.getDestinationFloor());
-                if (myState == AgentState.MovingUp) {
-                    System.out.println("a");
-                    if (untakenRequests.get(i).getInitialFloor() <= untakenRequests.get(i).getDestinationFloor()) {
-                        System.out.println("b");
-                        if (untakenRequests.get(i).getInitialFloor() <= currentFloor) {
-                            System.out.println("c");
-                            currentRequests.add(requestAux);
-                            currentCapacity++;
-                            untakenRequests.remove(requestAux);
-                            //untakenRequests.trimToSize();
-                            System.out.println(this.getAID().getLocalName() + " entrou nova pessoa a querer subir para o piso ");
+                isCloser = checkCloserElevator(requestAux.getInitialFloor(),abs(currentFloor - untakenRequests.get(i).getInitialFloor()));
+                if(isCloser) {
+                    if (myState == AgentState.MovingUp) {
+                        System.out.println("a");
+                        if (untakenRequests.get(i).getInitialFloor() <= untakenRequests.get(i).getDestinationFloor()) {
+                            System.out.println("b");
+                            if (untakenRequests.get(i).getInitialFloor() <= currentFloor) {
+                                System.out.println("c");
+                                currentRequests.add(requestAux);
+                                currentCapacity++;
+                                untakenRequests.remove(requestAux);
+                                //untakenRequests.trimToSize();
+                                System.out.println(this.getAID().getLocalName() + " entrou nova pessoa a querer subir para o piso ");
 
+                            }
                         }
                     }
-                }
-                if (myState == AgentState.MovingDown) {
-                    System.out.println("d");
-                    if (untakenRequests.get(i).getInitialFloor() >= untakenRequests.get(i).getDestinationFloor()) {
-                        System.out.println("e");
-                        if (untakenRequests.get(i).getInitialFloor() >= currentFloor) {
-                            System.out.println("f");
-                            currentRequests.add(requestAux);
-                            currentCapacity++;
-                            untakenRequests.remove(requestAux);
-                            //untakenRequests.trimToSize();
-                            System.out.println(this.getAID().getLocalName() + " entrou nova pessoa a querer descer para o piso ");
+                    if (myState == AgentState.MovingDown) {
+                        System.out.println("d");
+                        if (untakenRequests.get(i).getInitialFloor() >= untakenRequests.get(i).getDestinationFloor()) {
+                            System.out.println("e");
+                            if (untakenRequests.get(i).getInitialFloor() >= currentFloor) {
+                                System.out.println("f");
+                                currentRequests.add(requestAux);
+                                currentCapacity++;
+                                untakenRequests.remove(requestAux);
+                                //untakenRequests.trimToSize();
+                                System.out.println(this.getAID().getLocalName() + " entrou nova pessoa a querer descer para o piso ");
+                            }
                         }
                     }
                 }
@@ -327,6 +336,38 @@ public class ElevatorAgent extends Agent {
                 System.out.println(this.getAID().getLocalName() + " chegou ao destino");
             }
         }
+    }
+
+    private boolean checkCloserElevator(int requestFloor, int distance){
+        boolean isChosen = true;
+        String minAID = "";
+        for (Map.Entry<String, Integer> entry : elevatorLocation.entrySet()) {
+            int distanceAux = abs(entry.getValue() - requestFloor);
+            if (distance > distanceAux) {
+                isChosen = false;
+                minAID = entry.getKey();
+                sendRequestToCloserElevator(minAID,requestFloor);
+            }
+        }
+        return isChosen;
+    }
+
+    private void sendRequestToCloserElevator(String minAID, int requestFloor){
+
+        ACLMessage msgNextElevator = new ACLMessage(ACLMessage.REQUEST);
+        currentCapacity--;
+        msgNextElevator.setPerformative(ACLMessage.REQUEST);
+        //enviar mensagem para o elevador mais próximo
+        System.out.println(getAID().getLocalName() + " a enviar mensagem para o elevador mais proximo " + minAID);
+        for (AID aid : elevatorsAID) {
+            if (aid.getLocalName().equals(minAID)) {
+                msgNextElevator.addReceiver(aid);
+            }
+        }
+        currentRequests.remove(currentRequests.size()-1);
+        msgNextElevator.setContent(requestFloor + "," + destinationFloor);
+        this.send(msgNextElevator);
+
     }
 
     public void setState(AgentState state) {
