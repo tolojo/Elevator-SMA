@@ -128,7 +128,9 @@ public class ElevatorAgent extends Agent {
                                     numberOfMovs++;
                                     informCurrentFloor(myAgent, currentFloor, false);
                                     moveElevatorTo(requestAux.getDestinationFloor());
-
+                                }
+                                if (currentCapacity > 0){
+                                    currentCapacity--;
                                 }
 
                                 System.out.println(myAgent.getLocalName() + " chegou ao piso destino " + destinationFloor + " com " + currentCapacity + " pessoas");
